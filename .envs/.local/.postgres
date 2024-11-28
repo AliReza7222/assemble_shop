@@ -1,0 +1,7 @@
+# PostgreSQL
+# ------------------------------------------------------------------------------
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=assemble_shop
+POSTGRES_USER=gwGVRvvLkeDMqXsZVfMmwWHImysPOMzx
+POSTGRES_PASSWORD=zvdadOWWBG00hkXyVpQZfSH8r8XeD9dCAI0dv5izpxs3XJtTdMGAQVzmOxhkwAs6

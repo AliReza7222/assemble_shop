@@ -38,9 +38,21 @@ REVIEW_FIELDS = (
     "rating",
     "comment",
 )
+REVIEW_LIST_DISPLAY_FIELDS = (
+    "created_by",
+    "product",
+    "rating",
+)
 # Discount Fields
 # ------------------------------------------------------------------------------
 DISCOUNT_FIELDS = (
+    "product",
+    "discount_percentage",
+    "start_date",
+    "end_date",
+    "is_active",
+)
+DISCOUNT_LIST_DISPLAY_FIELDS = (
     "product",
     "discount_percentage",
     "start_date",

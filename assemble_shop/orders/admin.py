@@ -51,9 +51,27 @@ class OrderAdmin(BaseAdmin):
 
 @admin.register(Review)
 class ReviewAdmin(BaseAdmin):
-    pass
+    list_display = ReviewFieldsEnum.LIST_DISPLAY_FIELDS.value
+
+    def get_fieldsets(self, request, obj=None):
+        return (
+            (
+                BaseTitleEnum.GENERAL.value,
+                {"fields": ReviewFieldsEnum.GENERAL_FIELDS.value},
+            ),
+            (BaseTitleEnum.INFO.value, {"fields": BaseFieldsEnum.BASE.value}),
+        )
 
 
 @admin.register(Discount)
 class DiscountAdmin(BaseAdmin):
-    pass
+    list_display = DiscountFieldsEnum.LIST_DISPLAY_FIELDS.value
+
+    def get_fieldsets(self, request, obj=None):
+        return (
+            (
+                BaseTitleEnum.GENERAL.value,
+                {"fields": DiscountFieldsEnum.GENERAL_FIELDS.value},
+            ),
+            (BaseTitleEnum.INFO.value, {"fields": BaseFieldsEnum.BASE.value}),
+        )

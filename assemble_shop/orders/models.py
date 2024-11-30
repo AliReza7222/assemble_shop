@@ -99,6 +99,9 @@ class Review(BaseModel):
     )
     comment = models.TextField()
 
+    def __str__(self):
+        return f"{self.product} - {self.rating}"
+
     class Meta:
         db_table = "reviews"
 
@@ -111,7 +114,7 @@ class Discount(BaseModel):
         on_delete=models.CASCADE,
     )
     discount_percentage = models.DecimalField(
-        verbose_name=_("Discount of Product"), max_digits=2, decimal_places=2
+        verbose_name=_("Discount of Product"), max_digits=10, decimal_places=2
     )
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
@@ -119,6 +122,9 @@ class Discount(BaseModel):
 
     def set_is_active(self):
         pass
+
+    def __str__(self):
+        return f"{self.product} - off {self.discount_percentage} %"
 
     class Meta:
         db_table = "discounts"

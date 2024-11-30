@@ -1,3 +1,5 @@
+import uuid
+
 from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -10,16 +12,22 @@ User = get_user_model()
 
 
 class Product(BaseModel):
-    name = models.CharField(verbose_name=_("Product Name"), max_length=225)
+    name = models.CharField(
+        verbose_name=_("Product Name"), max_length=225, unique=True
+    )
     price = models.DecimalField(
         verbose_name=_("Price"), max_digits=10, decimal_places=2
     )
     description = models.TextField(verbose_name=_("Description"), blank=True)
     inventory = models.PositiveIntegerField(
-        verbose_name=_("Inventory of product"), default=0
+        verbose_name=_("Inventory Of Product"), default=0
     )
     rating = models.DecimalField(
-        verbose_name=_("Rating"), max_digits=2, decimal_places=2
+        verbose_name=_("Rating"),
+        max_digits=2,
+        decimal_places=2,
+        blank=True,
+        null=True,
     )
 
     def update_rating(self):
@@ -28,6 +36,9 @@ class Product(BaseModel):
     @property
     def discounted_price(self):
         pass
+
+    def __str__(self):
+        return self.name
 
     class Meta:
         db_table = "products"
@@ -52,6 +63,25 @@ class Order(BaseModel):
         choices=OrderStatusEnum.choices(),
         default=OrderStatusEnum.PENDING.value,
     )
+    total_price = models.DecimalField(
+        verbose_name=_("Total Price"),
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    tracking_code = models.UUIDField(
+        verbose_name=_("Tracking Code"),
+        default=uuid.uuid4,
+        editable=False,
+        unique=True,
+    )
+
+    def set_total_price(self):
+        pass
+
+    def __str__(self):
+        return str(self.tracking_code)
 
     class Meta:
         db_table = "orders"

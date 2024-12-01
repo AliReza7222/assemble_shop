@@ -13,6 +13,14 @@ class BaseModel(models.Model):
         related_name="%(class)s_created_by",
         on_delete=models.DO_NOTHING,
     )
+    updated_by = models.ForeignKey(
+        User,
+        verbose_name=_("Updated By"),
+        related_name="%(class)s_updated_by",
+        on_delete=models.DO_NOTHING,
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
 

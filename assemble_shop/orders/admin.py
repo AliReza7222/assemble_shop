@@ -3,6 +3,7 @@ from django.contrib import admin
 from assemble_shop.base.admin import BaseAdmin
 from assemble_shop.base.enums import BaseFieldsEnum, BaseTitleEnum
 from assemble_shop.orders.enums import *
+from assemble_shop.orders.forms import DiscountForm
 from assemble_shop.orders.models import *
 
 
@@ -16,13 +17,23 @@ class ProductAdmin(BaseAdmin):
         )
 
     def get_fieldsets(self, request, obj=None):
-        return (
+        fieldsets = (
             (
                 BaseTitleEnum.GENERAL.value,
                 {"fields": ProductFieldsEnum.GENERAL_FIELDS.value},
             ),
+        )
+        if obj.discount_now:
+            fieldsets += (  # type: ignore
+                (
+                    ProductTitleEnum.DISCOUNT_INFO.value,
+                    {"fields": ProductFieldsEnum.DISCOUNT_NOW_FIELDS.value},
+                ),
+            )
+        fieldsets += (  # type: ignore
             (BaseTitleEnum.INFO.value, {"fields": BaseFieldsEnum.BASE.value}),
         )
+        return fieldsets
 
 
 @admin.register(Order)
@@ -66,6 +77,7 @@ class ReviewAdmin(BaseAdmin):
 @admin.register(Discount)
 class DiscountAdmin(BaseAdmin):
     list_display = DiscountFieldsEnum.LIST_DISPLAY_FIELDS.value
+    form = DiscountForm
 
     def get_fieldsets(self, request, obj=None):
         return (

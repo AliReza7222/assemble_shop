@@ -21,13 +21,16 @@ class OrderTitleEnum(BaseEnum):
 
 
 class ProductTitleEnum(BaseEnum):
-    pass
+    DISCOUNT_INFO = "Discount Now"
 
 
 class ProductFieldsEnum(BaseEnum):
     GENERAL_FIELDS = PRODUCT_FIELDS
     LIST_DISPLAY_FIELDS = PRODUCT_LIST_DISPLAY_FIELDS
-    READONLY_FIELDS = PRODUCT_READONLY_FIELDS
+    DISCOUNT_NOW_FIELDS = PRODUCT_DISCOUNT_NOW_FIELDS
+    READONLY_FIELDS = (
+        PRODUCT_READONLY_FIELDS + PRODUCT_DISCOUNT_NOW_FIELDS + PRODUCT_TAGS
+    )
 
 
 class ReviewFieldsEnum(BaseEnum):

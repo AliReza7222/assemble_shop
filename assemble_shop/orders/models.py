@@ -1,12 +1,15 @@
 import uuid
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models import Avg
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from assemble_shop.base.models import BaseModel
-from assemble_shop.orders.enums import OrderStatusEnum
+from assemble_shop.orders.enums import DiscountFieldsEnum, OrderStatusEnum
 
 User = get_user_model()
 
@@ -24,24 +27,56 @@ class Product(BaseModel):
     )
     rating = models.DecimalField(
         verbose_name=_("Rating"),
-        max_digits=2,
+        max_digits=3,
         decimal_places=2,
         blank=True,
         null=True,
     )
 
-    def update_rating(self):
-        pass
+    def update_rating(self) -> None:
+        avg_rating = self.reviews.aggregate(avg_rating=Avg("rating"))
+        if avg_result := avg_rating.get("avg_rating"):
+            self.rating = Decimal(avg_result).quantize(Decimal("0.01"))
+            self.save()
+
+    @property
+    def discount_now(self):
+        time_now = timezone.now()
+        return self.discounts.filter(
+            start_date__lte=time_now, end_date__gte=time_now
+        ).first()
 
     @property
     def discounted_price(self):
-        pass
+        discount = self.discount_now
+        if discount and discount.is_active:
+            discounted_price = self.price - (
+                self.price * (discount.discount_percentage / 100)
+            )
+            return Decimal(discounted_price).quantize(Decimal("0.01"))
+        return
+
+    def get_attribute_discount(self, attribute):
+        return getattr(self.discount_now, attribute)
 
     def __str__(self):
         return self.name
 
     class Meta:
         db_table = "products"
+
+
+# ‌  set attributes discounts for Products
+def make_getattr(field):
+    def getattr(self):
+        return self.get_attribute_discount(field)
+
+    getattr.short_description = field.replace("_", " ").title()  # type: ignore
+    return getattr
+
+
+for field in DiscountFieldsEnum.GENERAL_FIELDS.value[1:]:
+    setattr(Product, f"get_{field}", make_getattr(field))
 
 
 class Order(BaseModel):

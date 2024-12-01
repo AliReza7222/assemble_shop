@@ -3,6 +3,7 @@
 PRODUCT_FIELDS = (
     "name",
     "price",
+    "discounted_price",
     "inventory",
     "rating",
     "description",
@@ -12,6 +13,13 @@ PRODUCT_LIST_DISPLAY_FIELDS = (
     "price",
     "inventory",
     "rating",
+)
+PRODUCT_TAGS = ("discounted_price",)
+PRODUCT_DISCOUNT_NOW_FIELDS = (
+    "get_discount_percentage",
+    "get_start_date",
+    "get_end_date",
+    "get_is_active",
 )
 PRODUCT_READONLY_FIELDS = ("rating",)
 # Order Fields

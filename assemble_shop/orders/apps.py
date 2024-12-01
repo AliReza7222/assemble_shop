@@ -6,4 +6,7 @@ class OrdersConfig(AppConfig):
     name = "assemble_shop.orders"
 
     def ready(self):
-        pass
+        try:
+            import assemble_shop.orders.signals  # noqa F401
+        except ImportError:
+            pass

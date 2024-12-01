@@ -112,9 +112,6 @@ class Order(BaseModel):
         unique=True,
     )
 
-    def set_total_price(self):
-        pass
-
     def __str__(self):
         return str(self.tracking_code)
 
@@ -154,9 +151,6 @@ class Discount(BaseModel):
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
     is_active = models.BooleanField(default=False)
-
-    def set_is_active(self):
-        pass
 
     def __str__(self):
         return f"{self.product} - off {self.discount_percentage} %"

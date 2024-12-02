@@ -60,7 +60,7 @@ class Product(BaseModel):
         return getattr(self.discount_now, attribute)
 
     def __str__(self):
-        return self.name
+        return f"{self.name} - {self.price}"
 
     class Meta:
         db_table = "products"
@@ -80,12 +80,6 @@ for field in DiscountFieldsEnum.GENERAL_FIELDS.value[1:]:
 
 
 class Order(BaseModel):
-    customer = models.ForeignKey(
-        User,
-        verbose_name=_("Customer"),
-        related_name="customer",
-        on_delete=models.DO_NOTHING,
-    )
     products = models.ManyToManyField(
         Product, verbose_name=_("Products"), related_name="orders"
     )
@@ -96,7 +90,7 @@ class Order(BaseModel):
         verbose_name=_("Status"),
         max_length=50,
         choices=OrderStatusEnum.choices(),
-        default=OrderStatusEnum.PENDING.value,
+        default=OrderStatusEnum.PENDING.name,
     )
     total_price = models.DecimalField(
         verbose_name=_("Total Price"),

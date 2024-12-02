@@ -15,6 +15,7 @@ PRODUCT_LIST_DISPLAY_FIELDS = (
     "rating",
 )
 PRODUCT_TAGS = ("discounted_price",)
+PRODUCT_LIST_SEARCH_FIELDS = ("name",)
 PRODUCT_DISCOUNT_NOW_FIELDS = (
     "get_discount_percentage",
     "get_start_date",
@@ -25,15 +26,21 @@ PRODUCT_READONLY_FIELDS = ("rating",)
 # Order Fields
 # ------------------------------------------------------------------------------
 ORDER_FIELDS = (
-    "customer",
     "products",
     "quantity",
     "status",
     "total_price",
 )
-ORDER_LIST_DISPLAY_FIELDS = ("customer", "quantity", "status", "total_price")
+ORDER_LIST_DISPLAY_FIELDS = (
+    "created_by",
+    "total_price",
+    "status",
+    "quantity",
+)
 ORDER_FILTER_HORIZONTAL = ("products",)
 ORDER_TRACKING_FIELDS = ("tracking_code",)
+ORDER_LIST_SEARCH_FIELDS = ("created_by__email", "tracking_code")
+ORDER_LIST_FILTER_FIELDS = ("status",)
 ORDER_READONLY_FIELDS = (
     "total_price",
     "quantity",
@@ -51,6 +58,7 @@ REVIEW_LIST_DISPLAY_FIELDS = (
     "product",
     "rating",
 )
+REVIEW_LIST_SEARCH_FIELDS = ("product__name", "rating")
 # Discount Fields
 # ------------------------------------------------------------------------------
 DISCOUNT_FIELDS = (
@@ -67,3 +75,5 @@ DISCOUNT_LIST_DISPLAY_FIELDS = (
     "end_date",
     "is_active",
 )
+DISCOUNT_LIST_SEARCH_FIELDS = ("product__name",)
+DISCOUNT_LIST_FILTER_FIELDS = ("is_active",)

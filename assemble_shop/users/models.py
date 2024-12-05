@@ -5,7 +5,7 @@ from django.db import models
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
-from .groups import CUSTOMER
+from .groups import ADMIN, CUSTOMER
 from .managers import UserManager
 
 
@@ -33,8 +33,15 @@ class User(AbstractUser):
         """
         return reverse("users:detail", kwargs={"pk": self.id})
 
+    @property
     def is_customer(self):
         return self.groups.filter(name__in=[CUSTOMER]).exists()
+
+    @property
+    def is_superior_group(self):
+        return (
+            self.groups.filter(name__in=[ADMIN]).exists() or self.is_superuser
+        )
 
     class Meta:
         db_table = "users"

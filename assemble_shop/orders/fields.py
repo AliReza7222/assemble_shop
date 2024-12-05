@@ -27,7 +27,6 @@ PRODUCT_READONLY_FIELDS = ("rating",)
 # ------------------------------------------------------------------------------
 ORDER_FIELDS = (
     "products",
-    "quantity",
     "status",
     "total_price",
 )
@@ -35,17 +34,23 @@ ORDER_LIST_DISPLAY_FIELDS = (
     "created_by",
     "total_price",
     "status",
-    "quantity",
 )
-ORDER_FILTER_HORIZONTAL = ("products",)
 ORDER_TRACKING_FIELDS = ("tracking_code",)
 ORDER_LIST_SEARCH_FIELDS = ("created_by__email", "tracking_code")
 ORDER_LIST_FILTER_FIELDS = ("status",)
 ORDER_READONLY_FIELDS = (
+    "products",
     "total_price",
-    "quantity",
     "tracking_code",
 )
+# OrderItem Fields
+# ------------------------------------------------------------------------------
+ORDER_ITEM_FIELDS = (
+    "product",
+    "quantity",
+    "product_price",
+)
+ORDER_ITEM_TAGS = ("product_price",)
 # Review Fields
 # ------------------------------------------------------------------------------
 REVIEW_FIELDS = (

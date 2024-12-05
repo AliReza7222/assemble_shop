@@ -18,10 +18,12 @@ class DiscountForm(forms.ModelForm):
             )
 
         product = cleaned_data.get("product")  # type: ignore
+
         latest_discount = product.discounts.filter(  # type: ignore
             start_date__lte=cleaned_data.get("end_date"),  # type: ignore
             end_date__gte=cleaned_data.get("start_date"),  # type: ignore
         ).exclude(id=self.instance.id)
+
         if latest_discount.exists():
             raise forms.ValidationError(
                 _("This product already has an overlapping discount.")

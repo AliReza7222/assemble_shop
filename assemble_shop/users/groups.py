@@ -34,6 +34,7 @@ PERMISIONS = {
         "view_order",
         # Review
         "view_review",
+        "change_review",
         # Discount
         "add_discount",
         "view_discount",

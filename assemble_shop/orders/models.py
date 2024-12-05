@@ -60,7 +60,7 @@ class Product(BaseModel):
         return getattr(self.discount_now, attribute)
 
     def __str__(self):
-        return f"{self.name} - {self.price}"
+        return self.name
 
     class Meta:
         db_table = "products"
@@ -80,11 +80,11 @@ for field in DiscountFieldsEnum.GENERAL_FIELDS.value[1:]:
 
 
 class Order(BaseModel):
-    products = models.ManyToManyField(
-        Product, verbose_name=_("Products"), related_name="orders"
-    )
-    quantity = models.PositiveIntegerField(
-        verbose_name=_("Quantity"), default=1
+    products = models.ManyToManyField(  # type: ignore
+        Product,
+        verbose_name=_("Products"),
+        related_name="orders",
+        through="OrderItem",
     )
     status = models.CharField(
         verbose_name=_("Status"),
@@ -106,11 +106,47 @@ class Order(BaseModel):
         unique=True,
     )
 
+    @property
+    def is_pending_status(self):
+        return self.status == OrderStatusEnum.PENDING.name
+
+    @property
+    def is_modifiable_status(self):
+        return self.status in (
+            OrderStatusEnum.PENDING.name,
+            OrderStatusEnum.CONFIRMED.name,
+        )
+
     def __str__(self):
         return str(self.tracking_code)
 
     class Meta:
         db_table = "orders"
+
+
+class OrderItem(models.Model):
+    product = models.ForeignKey(
+        Product,
+        verbose_name=_("Product"),
+        related_name="order_items",
+        on_delete=models.DO_NOTHING,
+    )
+    order = models.ForeignKey(
+        Order,
+        verbose_name=_("Order"),
+        related_name="items",
+        on_delete=models.DO_NOTHING,
+    )
+    quantity = models.PositiveIntegerField(
+        default=1, verbose_name=_("Quantity")
+    )
+
+    def __str__(self):
+        return f"{self.product} - {self.quantity}"
+
+    class Meta:
+        db_table = "order_items"
+        unique_together = ("order", "product")
 
 
 class Review(BaseModel):
@@ -126,7 +162,7 @@ class Review(BaseModel):
     comment = models.TextField()
 
     def __str__(self):
-        return f"{self.product} - {self.rating}"
+        return f"{self.product} Rating {self.rating}"
 
     class Meta:
         db_table = "reviews"

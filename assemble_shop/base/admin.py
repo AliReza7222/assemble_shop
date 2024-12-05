@@ -2,7 +2,7 @@ from django.contrib import admin
 
 
 class BaseAdmin(admin.ModelAdmin):
-    readonly_fields = ["created_by", "updated_by", "created_at", "updated_at"]
+    readonly_fields = ("created_by", "updated_by", "created_at", "updated_at")
     list_per_page = 10
 
     def save_model(self, request, obj, form, change) -> None:

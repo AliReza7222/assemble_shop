@@ -1,9 +1,13 @@
 from django.contrib import admin
+from django.db import transaction
+from django.http import HttpResponseRedirect
+from django.urls import path
 
 from assemble_shop.base.admin import BaseAdmin
 from assemble_shop.base.enums import BaseFieldsEnum, BaseTitleEnum
 from assemble_shop.orders.enums import *
 from assemble_shop.orders.forms import DiscountForm
+from assemble_shop.orders.formsets import OrderItemFormset
 from assemble_shop.orders.models import *
 
 
@@ -13,9 +17,7 @@ class ProductAdmin(BaseAdmin):
     search_fields = ProductFieldsEnum.LIST_SEARCH_FIELDS.value
 
     def get_readonly_fields(self, request, obj=None):
-        return ProductFieldsEnum.READONLY_FIELDS.value + tuple(
-            self.readonly_fields
-        )
+        return ProductFieldsEnum.READONLY_FIELDS.value + self.readonly_fields
 
     def get_fieldsets(self, request, obj=None):
         fieldsets = (
@@ -24,7 +26,7 @@ class ProductAdmin(BaseAdmin):
                 {"fields": ProductFieldsEnum.GENERAL_FIELDS.value},
             ),
         )
-        if obj.discount_now:
+        if obj and obj.discount_now:
             fieldsets += (  # type: ignore
                 (
                     ProductTitleEnum.DISCOUNT_INFO.value,
@@ -37,19 +39,62 @@ class ProductAdmin(BaseAdmin):
         return fieldsets
 
 
+class OrderItemInline(admin.StackedInline):
+    model = Order.products.through
+    formset = OrderItemFormset
+    readonly_fields = OrderItemFieldsEnum.TAGS.value
+    fields = OrderItemFieldsEnum.GENERAL_FIELDS.value
+    extra = 0
+
+    def formfield_for_foreignkey(self, db_field, request=None, **kwargs):
+        if db_field.name == "product":
+            kwargs["queryset"] = Product.objects.filter(inventory__gt=0)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def has_change_permission(self, request, obj=None):
+        if obj:
+            return obj.is_pending_status
+        return True
+
+    def has_add_permission(self, request, obj=None):
+        if obj:
+            return obj.is_pending_status
+        return True
+
+    def has_delete_permission(self, request, obj=None):
+        if obj:
+            return obj.is_pending_status
+        return True
+
+    @admin.display(description="Product Price")
+    def product_price(self, obj):
+        return obj.product.price
+
+
 @admin.register(Order)
 class OrderAdmin(BaseAdmin):
     list_display = OrderFieldsEnum.LIST_DISPLAY_FIELDS.value
-    filter_horizontal = OrderFieldsEnum.FILTER_HORIZONTAL.value
     search_fields = OrderFieldsEnum.LIST_SEARCH_FIELDS.value
     list_filter = OrderFieldsEnum.LIST_FILTER_FIELDS.value
+    inlines = (OrderItemInline,)
+
+    def has_delete_permission(self, request, obj=None):
+        if obj:
+            return obj.is_pending_status
+        return True
+
+    def has_change_permission(self, request, obj=None):
+        if obj:
+            return obj.is_pending_status
+        return True
 
     def get_readonly_fields(self, request, obj=None):
-        readonly_fields = OrderFieldsEnum.READONLY_FIELDS.value + tuple(
-            self.readonly_fields
+        readonly_fields = (
+            OrderFieldsEnum.READONLY_FIELDS.value + self.readonly_fields
         )
+
         if request.user.is_customer:
-            readonly_fields += ("status",)
+            readonly_fields += ("status",)  # type: ignore
 
         return readonly_fields
 
@@ -59,21 +104,87 @@ class OrderAdmin(BaseAdmin):
             return queryset.filter(created_by=request.user)
         return queryset
 
-    def get_fieldsets(self, request, obj=None):
-        fieldsets = (
-            (
-                BaseTitleEnum.GENERAL.value,
-                {
-                    "fields": (
-                        OrderFieldsEnum.GENERAL_FIELDS.value
-                        if obj
-                        else (OrderFieldsEnum.GENERAL_FIELDS.value[0],)
-                    )
-                },
-            ),
+    def changed_status_order(self, order, status):
+        order.status = status
+        order.save(update_fields=["status"])
+
+    def completed_status_order(self, request, order_id):
+        order = self.get_object(request, order_id)
+        self.changed_status_order(order, OrderStatusEnum.COMPLETED.name)
+        self.message_user(
+            request, "Your order was successfully completed.", level="success"
         )
+        return HttpResponseRedirect(request.headers.get("referer"))
+
+    @transaction.atomic
+    def confirimed_order_view(self, request, order_id):
+        order = self.get_object(request, order_id)
+        products_updated = []
+
+        for item in order.items.select_related("product"):  # type: ignore
+            if item.product.inventory < item.quantity:
+                self.message_user(
+                    request,
+                    f"The stock of a {item.product} product is less than the quantity you selected.",
+                    level="error",
+                )
+                return HttpResponseRedirect(request.headers.get("referer"))
+            item.product.inventory -= item.quantity
+            products_updated.append(item.product)
+        Product.objects.bulk_update(products_updated, ["inventory"])
+
+        self.changed_status_order(order, OrderStatusEnum.CONFIRMED.name)
+        self.message_user(
+            request, "Your order was successfully confirmed.", level="success"
+        )
+        return HttpResponseRedirect(request.headers.get("referer"))
+
+    @transaction.atomic
+    def canceled_order_view(self, request, order_id):
+        order = self.get_object(request, order_id)
+        products_updated = []
+
+        for item in order.items.select_related("product"):  # type: ignore
+            item.product.inventory += item.quantity
+            products_updated.append(item.product)
+        Product.objects.bulk_update(products_updated, ["inventory"])
+
+        self.changed_status_order(order, OrderStatusEnum.CANCELED.name)
+        self.message_user(
+            request, "Your order was successfully canceled.", level="success"
+        )
+        return HttpResponseRedirect(request.headers.get("referer"))
+
+    def get_urls(self):
+        urls = super().get_urls()
+
+        custom_urls = [
+            path(
+                "<int:order_id>/finalize_order/",
+                self.admin_site.admin_view(self.confirimed_order_view),
+                name="orders_order_confirimed_order",
+            ),
+            path(
+                "<int:order_id>/cancel_order/",
+                self.admin_site.admin_view(self.canceled_order_view),
+                name="orders_order_cancel_order",
+            ),
+            path(
+                "<int:order_id>/complete_order/",
+                self.admin_site.admin_view(self.completed_status_order),
+                name="orders_order_complete_order",
+            ),
+        ]
+        return custom_urls + urls
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = ()
         if obj:
             fieldsets += (  # type: ignore
+                (
+                    BaseTitleEnum.GENERAL.value,
+                    {"fields": OrderFieldsEnum.GENERAL_FIELDS.value},
+                ),
                 (
                     OrderTitleEnum.TRACKING_CODE.value,
                     {"fields": OrderFieldsEnum.TRACKING_FIELDS.value},
@@ -84,6 +195,47 @@ class OrderAdmin(BaseAdmin):
                 ),
             )
         return fieldsets
+
+    def save_model(self, request, obj, form, change):
+        if obj.status != OrderStatusEnum.CONFIRMED.name:
+            msg = f'Your products have only been selected , \
+                    Please complete the order "{obj}" items to confirimed the order.'
+            self.message_user(request, msg, level="warning")
+        super().save_model(request, obj, form, change)
+
+    def update_total_price_order(self, order, order_items_formset):
+        total_price = 0
+        for form in order_items_formset.forms:
+            if form.is_valid():
+                form_data = form.cleaned_data
+                total_price += (
+                    form_data.get("quantity") * form_data.get("product").price
+                )
+        order.total_price = total_price
+        order.save(update_fields=["total_price"])
+
+    def save_related(self, request, form, formsets, change):
+        form.save_m2m()
+        order = form.instance
+        for formset in formsets:
+            if order.is_pending_status and isinstance(
+                formset, OrderItemFormset
+            ):
+                self.update_total_price_order(formset.instance, formset)
+            self.save_formset(request, form, formset, change=change)
+
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        extra_context = extra_context or {}
+        extra_context["pend_status"] = OrderStatusEnum.PENDING.name
+        extra_context.update(
+            {
+                "canceled_status": OrderStatusEnum.CANCELED.name,
+                "confirmed_status": OrderStatusEnum.CONFIRMED.name,
+                "completed_status": OrderStatusEnum.COMPLETED.name,
+                "is_superior_group": request.user.is_superior_group,
+            }
+        )
+        return super().change_view(request, object_id, form_url, extra_context)
 
 
 @admin.register(Review)

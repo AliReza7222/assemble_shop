@@ -43,32 +43,36 @@ class OrderItemInline(admin.StackedInline):
     model = Order.products.through
     formset = OrderItemFormset
     readonly_fields = OrderItemFieldsEnum.TAGS.value
-    fields = OrderItemFieldsEnum.GENERAL_FIELDS.value
+    autocomplete_fields = ("product",)
     extra = 0
 
-    def formfield_for_foreignkey(self, db_field, request=None, **kwargs):
-        if db_field.name == "product":
-            kwargs["queryset"] = Product.objects.filter(inventory__gt=0)
-        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+    def get_fields(self, request, obj=None):
+        return (
+            OrderItemFieldsEnum.GENERAL_FIELDS.value
+            + OrderItemFieldsEnum.TAGS.value
+        )
 
     def has_change_permission(self, request, obj=None):
-        if obj:
-            return obj.is_pending_status
-        return True
+        return obj.is_pending_status if obj else True
 
     def has_add_permission(self, request, obj=None):
-        if obj:
-            return obj.is_pending_status
-        return True
+        return obj.is_pending_status if obj else True
 
     def has_delete_permission(self, request, obj=None):
-        if obj:
-            return obj.is_pending_status
-        return True
+        return obj.is_pending_status if obj else True
 
     @admin.display(description="Product Price")
     def product_price(self, obj):
         return obj.product.price
+
+    @admin.display(description="Discounted Price")
+    def product_discount(self, obj):
+        return obj.product.discounted_price
+
+    @admin.display(description="Discount Percentage")
+    def discount_percentage(self, obj):
+        discount_now = obj.product.discount_now
+        return f"{discount_now.discount_percentage} %" if discount_now else None
 
 
 @admin.register(Order)
@@ -79,14 +83,10 @@ class OrderAdmin(BaseAdmin):
     inlines = (OrderItemInline,)
 
     def has_delete_permission(self, request, obj=None):
-        if obj:
-            return obj.is_pending_status
-        return True
+        return obj.is_pending_status if obj else True
 
     def has_change_permission(self, request, obj=None):
-        if obj:
-            return obj.is_pending_status
-        return True
+        return obj.is_pending_status if obj else True
 
     def get_readonly_fields(self, request, obj=None):
         readonly_fields = (
@@ -206,11 +206,13 @@ class OrderAdmin(BaseAdmin):
     def update_total_price_order(self, order, order_items_formset):
         total_price = 0
         for form in order_items_formset.forms:
-            if form.is_valid():
-                form_data = form.cleaned_data
-                total_price += (
-                    form_data.get("quantity") * form_data.get("product").price
-                )
+            product = form.cleaned_data.get("product")
+            quantity = form.cleaned_data.get("quantity")
+            total_price += (
+                product.price * quantity
+                if not product.discounted_price
+                else product.discounted_price * quantity
+            )
         order.total_price = total_price
         order.save(update_fields=["total_price"])
 

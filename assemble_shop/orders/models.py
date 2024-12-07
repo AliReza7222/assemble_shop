@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import Avg
+from django.db.models import Avg, Q
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -43,7 +43,7 @@ class Product(BaseModel):
     def discount_now(self):
         time_now = timezone.now()
         return self.discounts.filter(
-            start_date__lte=time_now, end_date__gte=time_now
+            Q(start_date__lte=time_now) & Q(end_date__gte=time_now)
         ).first()
 
     @property

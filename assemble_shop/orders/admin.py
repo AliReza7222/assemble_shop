@@ -254,13 +254,17 @@ class ReviewAdmin(BaseAdmin):
 
     def has_change_permission(self, request, obj=None):
         if obj:
-            return request.user == obj.created_by or request.user.is_superuser
-        super().has_change_permission(request, obj)
+            return (
+                request.user == obj.created_by or request.user.is_superior_group
+            )
+        return True
 
     def has_delete_permission(self, request, obj=None):
         if obj:
-            return request.user == obj.created_by or request.user.is_superuser
-        super().has_delete_permission(request, obj)
+            return (
+                request.user == obj.created_by or request.user.is_superior_group
+            )
+        return True
 
 
 @admin.register(Discount)

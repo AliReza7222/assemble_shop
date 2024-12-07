@@ -24,5 +24,11 @@ class OrderItemFormset(BaseInlineFormSet):
             StockValidation(),
         ]
         for form in self.forms:
+            if form.cleaned_data.get("DELETE"):
+                continue
+
             for validation_strategy in validations:
-                validation_strategy.validate(data=form.cleaned_data)
+                try:
+                    validation_strategy.validate(data=form.cleaned_data)
+                except ValidationError as e:
+                    form.add_error(None, e)

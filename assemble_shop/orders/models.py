@@ -64,6 +64,7 @@ class Product(BaseModel):
 
     class Meta:
         db_table = "products"
+        indexes = [models.Index(fields=["name"], name="product_name_idx")]
 
 
 # ‌  set attributes discounts for Products
@@ -122,6 +123,11 @@ class Order(BaseModel):
 
     class Meta:
         db_table = "orders"
+        indexes = [
+            models.Index(
+                fields=["tracking_code"], name="order_tracking_code_idx"
+            )
+        ]
 
 
 class OrderItem(models.Model):

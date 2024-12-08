@@ -109,7 +109,7 @@ class OrderAdmin(BaseAdmin):
                 "order": new_order,
                 "product": item.product,
                 "quantity": item.quantity,
-                "price": item.price,
+                "price": item.product.price,
                 "discount_percentage": (
                     item.product.discount_now.get("discount_percentage")
                     if item.product.discount_now

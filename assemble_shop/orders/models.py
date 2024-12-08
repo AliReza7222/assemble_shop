@@ -177,9 +177,9 @@ class OrderItem(models.Model):
     def save(self, *args, **kwargs):
         if not self.pk:
             self.created_at = timezone.now()
-            self.price = self.product.price
-            if discount := self.product.discount_now:
-                self.discount_percentage = discount.discount_percentage
+        self.price = self.product.price
+        if discount := self.product.discount_now:
+            self.discount_percentage = discount.discount_percentage
 
         super().save(*args, **kwargs)
 

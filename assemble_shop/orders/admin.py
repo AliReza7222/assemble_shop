@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.db import transaction
 from django.http import HttpResponseRedirect
-from django.urls import path
+from django.urls import path, reverse
 
 from assemble_shop.base.admin import BaseAdmin
 from assemble_shop.base.enums import BaseFieldsEnum, BaseTitleEnum
@@ -108,7 +108,30 @@ class OrderAdmin(BaseAdmin):
         order.status = status
         order.save(update_fields=["status"])
 
-    def completed_status_order(self, request, order_id):
+    def regenerate_order_view(self, request, order_id):
+        old_order = self.get_object(request, order_id)
+        total_price = 0
+        for item in old_order.items.all():  # type: ignore
+            total_price += (
+                item.product.price * item.quantity
+                if not item.product.discounted_price
+                else item.product.discounted_price * item.quantity
+            )
+        data = {
+            "created_by": request.user,
+            "updated_by": request.user,
+            "total_price": total_price,
+        }
+        new_order = Order.objects.create(**data)
+        new_order.products.set(old_order.products.all())  # type: ignore
+        self.message_user(
+            request, "Your order was successfully regenerated.", level="success"
+        )
+        return HttpResponseRedirect(
+            reverse("admin:orders_order_change", args=(new_order.id,))
+        )
+
+    def completed_status_order_view(self, request, order_id):
         order = self.get_object(request, order_id)
         self.changed_status_order(order, OrderStatusEnum.COMPLETED.name)
         self.message_user(
@@ -171,8 +194,13 @@ class OrderAdmin(BaseAdmin):
             ),
             path(
                 "<int:order_id>/complete_order/",
-                self.admin_site.admin_view(self.completed_status_order),
+                self.admin_site.admin_view(self.completed_status_order_view),
                 name="orders_order_complete_order",
+            ),
+            path(
+                "<int:order_id>/regenerate_order/",
+                self.admin_site.admin_view(self.regenerate_order_view),
+                name="orders_order_regenerate_order",
             ),
         ]
         return custom_urls + urls

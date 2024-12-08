@@ -2,9 +2,12 @@
 
 {% block submit_buttons_bottom %}
   {{ block.super }}
-  {% if original.status != completed_status and original.status != canceled_status %}
+  {% if change %}
     <div class="submit-row">
-      {% if change %}
+      {% if original.status == canceled_status or original.status == completed_status %}
+        <input type="button" id="btn-regenerate-order" value="Regenerate Order" />
+      {% endif %}
+      {% if original.status != completed_status and original.status != canceled_status %}
         <input type="button"
                id="btn-confirim-order"
                value="Confirmed Order"
@@ -13,11 +16,12 @@
           <input type="button" id="btn-cancel-order" value="Canceled Order" />
           <input type="button" id="btn-complete-order" value="Complete Order" />
         {% endif %}
-        <script>
+      {% endif %}
+      <script>
         (function($) {
           $(document).ready(function() {
             $('#btn-confirim-order').click(function(event) {
-              var confirmSave = confirm("Are you sure you want to finalized this order?");
+              var confirmSave = confirm("Are you sure you want to confirmed this order?");
               if (confirmSave) {
                 window.open('{% url "admin:orders_order_confirimed_order" order_id=original.pk %}', '_self');
               }
@@ -44,9 +48,18 @@
             });
           });
         })(django.jQuery);
+        (function($) {
+          $(document).ready(function() {
+            $('#btn-regenerate-order').click(function(event) {
+              var confirmSave = confirm("Are you sure you want to regenerate this order?");
+              if (confirmSave) {
+                window.open('{% url "admin:orders_order_regenerate_order" order_id=original.pk %}', '_self');
+              }
+            });
+          });
+        })(django.jQuery);
 
-        </script>
-      {% endif %}
+      </script>
     </div>
   {% endif %}
 {% endblock submit_buttons_bottom %}

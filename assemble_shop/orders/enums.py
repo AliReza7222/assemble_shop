@@ -24,7 +24,7 @@ class OrderTitleEnum(BaseEnum):
 
 class OrderItemFieldsEnum(BaseEnum):
     GENERAL_FIELDS = ORDER_ITEM_FIELDS
-    TAGS = ORDER_ITEM_TAGS
+    READONLY_FIELDS = ORDER_ITEM_READONLY_FIELDS
 
 
 class ProductTitleEnum(BaseEnum):

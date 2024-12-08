@@ -42,14 +42,14 @@ class ProductAdmin(BaseAdmin):
 class OrderItemInline(admin.StackedInline):
     model = Order.products.through
     formset = OrderItemFormset
-    readonly_fields = OrderItemFieldsEnum.TAGS.value
+    readonly_fields = OrderItemFieldsEnum.READONLY_FIELDS.value
     autocomplete_fields = ("product",)
     extra = 0
 
     def get_fields(self, request, obj=None):
         return (
             OrderItemFieldsEnum.GENERAL_FIELDS.value
-            + OrderItemFieldsEnum.TAGS.value
+            + OrderItemFieldsEnum.READONLY_FIELDS.value
         )
 
     def has_change_permission(self, request, obj=None):
@@ -60,19 +60,6 @@ class OrderItemInline(admin.StackedInline):
 
     def has_delete_permission(self, request, obj=None):
         return obj.is_pending_status if obj else True
-
-    @admin.display(description="Product Price")
-    def product_price(self, obj):
-        return obj.product.price
-
-    @admin.display(description="Discounted Price")
-    def product_discount(self, obj):
-        return obj.product.discounted_price
-
-    @admin.display(description="Discount Percentage")
-    def discount_percentage(self, obj):
-        discount_now = obj.product.discount_now
-        return f"{discount_now.discount_percentage} %" if discount_now else None
 
 
 @admin.register(Order)
@@ -108,22 +95,34 @@ class OrderAdmin(BaseAdmin):
         order.status = status
         order.save(update_fields=["status"])
 
+    @transaction.atomic
     def regenerate_order_view(self, request, order_id):
-        old_order = self.get_object(request, order_id)
-        total_price = 0
-        for item in old_order.items.all():  # type: ignore
-            total_price += (
-                item.product.price * item.quantity
-                if not item.product.discounted_price
-                else item.product.discounted_price * item.quantity
-            )
-        data = {
-            "created_by": request.user,
-            "updated_by": request.user,
-            "total_price": total_price,
-        }
-        new_order = Order.objects.create(**data)
-        new_order.products.set(old_order.products.all())  # type: ignore
+        old_order = Order.objects.prefetch_related("items__product").get(
+            id=order_id
+        )
+        new_items_order = []
+        new_order = Order.objects.create(
+            created_by=request.user, updated_by=request.user
+        )
+        for item in old_order.items.all():
+            new_item_data = {
+                "order": new_order,
+                "product": item.product,
+                "quantity": item.quantity,
+                "price": item.price,
+                "discount_percentage": (
+                    item.product.discount_now.get("discount_percentage")
+                    if item.product.discount_now
+                    else None
+                ),
+            }
+            new_items_order.append(OrderItem(**new_item_data))
+        OrderItem.objects.bulk_create(new_items_order)
+        new_order.total_price = sum(
+            item.get_product_price for item in new_items_order
+        )
+        new_order.save(update_fields=["total_price"])
+
         self.message_user(
             request, "Your order was successfully regenerated.", level="success"
         )
@@ -272,15 +271,23 @@ class OrderAdmin(BaseAdmin):
 class ReviewAdmin(BaseAdmin):
     list_display = ReviewFieldsEnum.LIST_DISPLAY_FIELDS.value
     search_fields = ReviewFieldsEnum.LIST_SEARCH_FIELDS.value
+    autocomplete_fields = ("product",)
 
     def get_fieldsets(self, request, obj=None):
-        return (
+        fieldsets = (
             (
                 BaseTitleEnum.GENERAL.value,
                 {"fields": ReviewFieldsEnum.GENERAL_FIELDS.value},
             ),
-            (BaseTitleEnum.INFO.value, {"fields": BaseFieldsEnum.BASE.value}),
         )
+        if obj:
+            fieldsets += (  # type:ignore
+                (
+                    BaseTitleEnum.INFO.value,
+                    {"fields": BaseFieldsEnum.BASE.value},
+                ),
+            )
+        return fieldsets
 
     def has_change_permission(self, request, obj=None):
         if obj:

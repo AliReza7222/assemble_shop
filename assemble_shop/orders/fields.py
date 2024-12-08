@@ -49,10 +49,10 @@ ORDER_ITEM_FIELDS = (
     "product",
     "quantity",
 )
-ORDER_ITEM_TAGS = (
-    "product_price",
+ORDER_ITEM_READONLY_FIELDS = (
+    "price",
     "discount_percentage",
-    "product_discount",
+    "created_at",
 )
 # Review Fields
 # ------------------------------------------------------------------------------

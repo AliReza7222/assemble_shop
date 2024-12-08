@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import Avg, Q
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -33,31 +33,31 @@ class Product(BaseModel):
         null=True,
     )
 
-    def update_rating(self) -> None:
-        avg_rating = self.reviews.aggregate(avg_rating=Avg("rating"))
-        if avg_result := avg_rating.get("avg_rating"):
-            self.rating = Decimal(avg_result).quantize(Decimal("0.01"))
-            self.save()
-
     @property
     def discount_now(self):
         time_now = timezone.now()
-        return self.discounts.filter(
-            Q(start_date__lte=time_now) & Q(end_date__gte=time_now)
-        ).first()
+        return (
+            self.discounts.filter(
+                Q(start_date__lte=time_now) & Q(end_date__gte=time_now)
+            )
+            .values(
+                "discount_percentage", "is_active", "start_date", "end_date"
+            )
+            .first()
+        )
 
     @property
     def discounted_price(self):
         discount = self.discount_now
-        if discount and discount.is_active:
+        if discount and discount.get("is_active"):
             discounted_price = self.price - (
-                self.price * (discount.discount_percentage / 100)
+                self.price * (discount.get("discount_percentage") / 100)
             )
             return Decimal(discounted_price).quantize(Decimal("0.01"))
         return
 
     def get_attribute_discount(self, attribute):
-        return getattr(self.discount_now, attribute)
+        return self.discount_now.get(attribute)
 
     def __str__(self):
         return self.name
@@ -146,9 +146,42 @@ class OrderItem(models.Model):
     quantity = models.PositiveIntegerField(
         default=1, verbose_name=_("Quantity")
     )
+    discount_percentage = models.DecimalField(
+        verbose_name=_("Discount Percentage"),
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    price = models.DecimalField(
+        verbose_name=_("Porduct Price"),
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def get_product_price(self):
+        discount_product = self.product.discounted_price
+        return (
+            self.price * self.quantity  # type:ignore
+            if not discount_product
+            else discount_product * self.quantity
+        )
 
     def __str__(self):
         return f"{self.product} - {self.quantity}"
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            self.created_at = timezone.now()
+            self.price = self.product.price
+            if discount := self.product.discount_now:
+                self.discount_percentage = discount.discount_percentage
+
+        super().save(*args, **kwargs)
 
     class Meta:
         db_table = "order_items"
@@ -182,7 +215,7 @@ class Discount(BaseModel):
         on_delete=models.CASCADE,
     )
     discount_percentage = models.DecimalField(
-        verbose_name=_("Discount of Product"), max_digits=10, decimal_places=2
+        verbose_name=_("Discount Percentage"), max_digits=10, decimal_places=2
     )
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()

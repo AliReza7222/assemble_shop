@@ -224,34 +224,11 @@ class OrderAdmin(BaseAdmin):
         return fieldsets
 
     def save_model(self, request, obj, form, change):
-        if obj.status != OrderStatusEnum.CONFIRMED.name:
+        if obj.is_pending_status:
             msg = f'Your products have only been selected , \
                     Please complete the order "{obj}" items to confirimed the order.'
             self.message_user(request, msg, level="warning")
         super().save_model(request, obj, form, change)
-
-    def update_total_price_order(self, order, order_items_formset):
-        total_price = 0
-        for form in order_items_formset.forms:
-            product = form.cleaned_data.get("product")
-            quantity = form.cleaned_data.get("quantity")
-            total_price += (
-                product.price * quantity
-                if not product.discounted_price
-                else product.discounted_price * quantity
-            )
-        order.total_price = total_price
-        order.save(update_fields=["total_price"])
-
-    def save_related(self, request, form, formsets, change):
-        form.save_m2m()
-        order = form.instance
-        for formset in formsets:
-            if order.is_pending_status and isinstance(
-                formset, OrderItemFormset
-            ):
-                self.update_total_price_order(formset.instance, formset)
-            self.save_formset(request, form, formset, change=change)
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
         extra_context = extra_context or {}

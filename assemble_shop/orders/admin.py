@@ -26,16 +26,20 @@ class ProductAdmin(BaseAdmin):
                 {"fields": ProductFieldsEnum.GENERAL_FIELDS.value},
             ),
         )
-        if obj and obj.discount_now:
+        if obj:
+            if obj.discount_now:
+                fieldsets += (  # type: ignore
+                    (
+                        ProductTitleEnum.DISCOUNT_INFO.value,
+                        {"fields": ProductFieldsEnum.DISCOUNT_NOW_FIELDS.value},
+                    ),
+                )
             fieldsets += (  # type: ignore
                 (
-                    ProductTitleEnum.DISCOUNT_INFO.value,
-                    {"fields": ProductFieldsEnum.DISCOUNT_NOW_FIELDS.value},
+                    BaseTitleEnum.INFO.value,
+                    {"fields": BaseFieldsEnum.BASE.value},
                 ),
             )
-        fieldsets += (  # type: ignore
-            (BaseTitleEnum.INFO.value, {"fields": BaseFieldsEnum.BASE.value}),
-        )
         return fieldsets
 
 
@@ -289,10 +293,17 @@ class DiscountAdmin(BaseAdmin):
     form = DiscountForm
 
     def get_fieldsets(self, request, obj=None):
-        return (
+        fieldsets = (
             (
                 BaseTitleEnum.GENERAL.value,
                 {"fields": DiscountFieldsEnum.GENERAL_FIELDS.value},
             ),
-            (BaseTitleEnum.INFO.value, {"fields": BaseFieldsEnum.BASE.value}),
         )
+        if obj:
+            fieldsets += (  # type: ignore
+                (
+                    BaseTitleEnum.INFO.value,
+                    {"fields": BaseFieldsEnum.BASE.value},
+                ),
+            )
+        return fieldsets

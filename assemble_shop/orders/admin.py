@@ -17,7 +17,7 @@ class ProductAdmin(BaseAdmin):
     search_fields = ProductFieldsEnum.LIST_SEARCH_FIELDS.value
 
     def get_readonly_fields(self, request, obj=None):
-        return ProductFieldsEnum.READONLY_FIELDS.value + self.readonly_fields
+        return self.readonly_fields + ProductFieldsEnum.READONLY_FIELDS.value
 
     def get_fieldsets(self, request, obj=None):
         fieldsets = (
@@ -111,7 +111,7 @@ class OrderAdmin(BaseAdmin):
                 "quantity": item.quantity,
                 "price": item.product.price,
                 "discount_percentage": (
-                    item.product.discount_now.get("discount_percentage")
+                    item.product.discount_now.discount_percentage
                     if item.product.discount_now
                     else None
                 ),

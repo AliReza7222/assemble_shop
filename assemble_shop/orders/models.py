@@ -4,7 +4,6 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import Q
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -36,28 +35,22 @@ class Product(BaseModel):
     @property
     def discount_now(self):
         time_now = timezone.now()
-        return (
-            self.discounts.filter(
-                Q(start_date__lte=time_now) & Q(end_date__gte=time_now)
-            )
-            .values(
-                "discount_percentage", "is_active", "start_date", "end_date"
-            )
-            .first()
-        )
+        return self.discounts.filter(
+            start_date__lte=time_now, end_date__gte=time_now, is_active=True
+        ).first()
 
     @property
     def discounted_price(self):
         discount = self.discount_now
-        if discount and discount.get("is_active"):
+        if discount:
             discounted_price = self.price - (
-                self.price * (discount.get("discount_percentage") / 100)
+                self.price * (discount.discount_percentage / 100)
             )
             return Decimal(discounted_price).quantize(Decimal("0.01"))
         return
 
     def get_attribute_discount(self, attribute):
-        return self.discount_now.get(attribute)
+        return getattr(self.discount_now, attribute)
 
     def __str__(self):
         return self.name

@@ -165,7 +165,7 @@ class OrderItem(models.Model):
         )
 
     def __str__(self):
-        return f"{self.product} - {self.quantity}"
+        return f"{self.order} | {self.product}"
 
     class Meta:
         db_table = "order_items"

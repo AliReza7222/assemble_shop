@@ -104,13 +104,6 @@ class Order(BaseModel):
     def is_pending_status(self):
         return self.status == OrderStatusEnum.PENDING.name
 
-    @property
-    def is_modifiable_status(self):
-        return self.status in (
-            OrderStatusEnum.PENDING.name,
-            OrderStatusEnum.CONFIRMED.name,
-        )
-
     def __str__(self):
         return str(self.tracking_code)
 

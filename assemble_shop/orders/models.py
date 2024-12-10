@@ -167,15 +167,6 @@ class OrderItem(models.Model):
     def __str__(self):
         return f"{self.product} - {self.quantity}"
 
-    def save(self, *args, **kwargs):
-        if not self.pk:
-            self.created_at = timezone.now()
-        self.price = self.product.price
-        if discount := self.product.discount_now:
-            self.discount_percentage = discount.discount_percentage
-
-        super().save(*args, **kwargs)
-
     class Meta:
         db_table = "order_items"
         unique_together = ("order", "product")

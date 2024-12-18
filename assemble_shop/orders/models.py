@@ -153,7 +153,7 @@ class OrderItem(models.Model):
         discount_product = self.product.discounted_price
         return (
             self.price * self.quantity  # type:ignore
-            if not discount_product
+            if discount_product is None
             else discount_product * self.quantity
         )
 

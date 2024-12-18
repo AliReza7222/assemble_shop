@@ -290,6 +290,7 @@ class DiscountAdmin(BaseAdmin):
     list_display = DiscountFieldsEnum.LIST_DISPLAY_FIELDS.value
     search_fields = DiscountFieldsEnum.LIST_SEARCH_FIELDS.value
     list_filter = DiscountFieldsEnum.LIST_FILTER_FIELDS.value
+    autocomplete_fields = ("product",)
     form = DiscountForm
 
     def get_fieldsets(self, request, obj=None):

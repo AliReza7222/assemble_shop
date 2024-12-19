@@ -1,5 +1,5 @@
 # define an alias for the specific python version used in this file.
-FROM python:3.11.10-slim-bookworm AS python
+FROM python:3.11-slim-bullseye AS python
 
 # Python build stage
 FROM python AS python-build-stage
@@ -36,7 +36,7 @@ WORKDIR ${APP_HOME}
 
 # devcontainer dependencies and utils
 RUN apt-get update && apt-get install --no-install-recommends -y \
-  sudo git bash-completion nano ssh
+  sudo git bash-completion nano
 
 # Create devcontainer user and add it to sudoers
 RUN groupadd --gid 1000 dev-user \

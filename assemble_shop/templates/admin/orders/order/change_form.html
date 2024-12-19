@@ -1,0 +1,65 @@
+{% extends "admin/change_form.html" %}
+
+{% block submit_buttons_bottom %}
+  {{ block.super }}
+  {% if change %}
+    <div class="submit-row">
+      {% if original.status == canceled_status or original.status == completed_status %}
+        <input type="button" id="btn-regenerate-order" value="Regenerate Order" />
+      {% endif %}
+      {% if original.status != completed_status and original.status != canceled_status %}
+        <input type="button"
+               id="btn-confirim-order"
+               value="Confirmed Order"
+               {% if original.status != pend_status %}disabled title="Order status has already been confirmed"{% endif %} />
+        {% if original.status == confirmed_status and is_superior_group %}
+          <input type="button" id="btn-cancel-order" value="Canceled Order" />
+          <input type="button" id="btn-complete-order" value="Complete Order" />
+        {% endif %}
+      {% endif %}
+      <script>
+        (function($) {
+          $(document).ready(function() {
+            $('#btn-confirim-order').click(function(event) {
+              var confirmSave = confirm("Are you sure you want to confirmed this order?");
+              if (confirmSave) {
+                window.open('{% url "admin:orders_order_confirimed_order" order_id=original.pk %}', '_self');
+              }
+            });
+          });
+        })(django.jQuery);
+        (function($) {
+          $(document).ready(function() {
+            $('#btn-cancel-order').click(function(event) {
+              var confirmSave = confirm("Are you sure you want to canceled this order?");
+              if (confirmSave) {
+                window.open('{% url "admin:orders_order_cancel_order" order_id=original.pk %}', '_self');
+              }
+            });
+          });
+        })(django.jQuery);
+        (function($) {
+          $(document).ready(function() {
+            $('#btn-complete-order').click(function(event) {
+              var confirmSave = confirm("Are you sure you want to completed this order?");
+              if (confirmSave) {
+                window.open('{% url "admin:orders_order_complete_order" order_id=original.pk %}', '_self');
+              }
+            });
+          });
+        })(django.jQuery);
+        (function($) {
+          $(document).ready(function() {
+            $('#btn-regenerate-order').click(function(event) {
+              var confirmSave = confirm("Are you sure you want to regenerate this order?");
+              if (confirmSave) {
+                window.open('{% url "admin:orders_order_regenerate_order" order_id=original.pk %}', '_self');
+              }
+            });
+          });
+        })(django.jQuery);
+
+      </script>
+    </div>
+  {% endif %}
+{% endblock submit_buttons_bottom %}

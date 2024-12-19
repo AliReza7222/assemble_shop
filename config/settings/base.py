@@ -68,7 +68,7 @@ DJANGO_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # "django.contrib.humanize", # Handy template tags
-    "django.contrib.admin",
+    "assemble_shop.admin_panel.config.CustomAdminPanelConfig",
     "django.forms",
 ]
 THIRD_PARTY_APPS = [
@@ -82,6 +82,7 @@ THIRD_PARTY_APPS = [
 
 LOCAL_APPS = [
     # Your stuff: custom apps go here
+    "assemble_shop.admin_panel",
     "assemble_shop.users",
     "assemble_shop.orders",
     "assemble_shop.base",

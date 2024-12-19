@@ -1,0 +1,128 @@
+.dashboard-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.charts-container {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.chart-container {
+    flex: 1 1 45%;
+    max-width: 45%;
+    height: 300px;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.chart-container canvas {
+    width: 100%;
+    height: 100%;
+}
+
+.table-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.table-wrapper {
+    flex: 1 1 45%;
+    max-width: 45%;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    transition: transform 0.3s ease;
+}
+
+
+.table-index {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 5px;
+    font-size: 15px;
+    color: #333;
+    margin-top: 15px;
+}
+
+.table-index thead th {
+    background-color: #3498db;
+    color: #fff;
+    font-weight: 600;
+    padding: 12px;
+    text-transform: uppercase;
+    text-align: left;
+    letter-spacing: 1px;
+    border: none;
+    border-radius: 8px;
+}
+
+.table-index tbody tr {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.table-index tbody tr:hover {
+    background-color: #ecf0f1;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.table-index th,
+.table-index td {
+    padding: 12px;
+    text-align: left;
+    border: none;
+}
+
+.table-index a {
+    color: #3498db;
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.2s ease;
+}
+
+.table-index a:hover {
+    color: #2980b9;
+    text-decoration: underline;
+}
+
+
+.h3-index {
+    font-family: 'Roboto', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 10px;
+    position: relative;
+}
+
+.h3-index::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: #007bff;
+    border-radius: 2px;
+}
+
+
+.h3-index {
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+}

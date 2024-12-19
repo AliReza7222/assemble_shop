@@ -1,0 +1,96 @@
+{% extends "admin/base_site.html" %}
+
+{% load i18n static %}
+
+{% block content %}
+  <div class="dashboard-container">
+    {% if is_superior_group %}
+      <div class="charts-container">
+        <div class="chart-container">
+          <h3 class="h3-index">Income Over The Past Five Months</h3>
+          <canvas id="income-chart"></canvas>
+        </div>
+        <div class="chart-container">
+          <h3 class="h3-index">Order Count Over The Past Five Months</h3>
+          <canvas id="count-chart"></canvas>
+        </div>
+      </div>
+    {% endif %}
+    <div class="table-container">
+      <div class="table-wrapper">
+        <h3 class="h3-index">Top Five Customers Of The Last Month</h3>
+        <table class="table table-hover table-index">
+          <thead>
+            <tr>
+              <th>Email User</th>
+              <th>Total Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for person in top_customers %}
+              <tr>
+                <td>{{ person.created_by__email }}</td>
+                <td>{{ person.total_cost }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="table-wrapper">
+        <h3 class="h3-index">Top Five Products Based On Rating</h3>
+        <table class="table table-hover table-index">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Rating</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for product in top_products %}
+              <tr>
+                <td>
+                  <a href="{% url 'admin:orders_product_change' product.id %}">{{ product.name }}</a>
+                </td>
+                <td>{{ product.rating }} of 5</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const chartData = {{ chart_data|safe }};
+    const monthLabels = {{ month_labels|safe }};
+
+    new Chart(document.getElementById('income-chart'), {
+        type: 'line',
+        data: {
+            labels: monthLabels,
+            datasets: [{
+                label: "Income",
+                data: chartData.total_price.slice(-5),
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 2
+            }]
+        },
+        options: { scales: { y: { beginAtZero: true } } }
+    });
+
+    new Chart(document.getElementById('count-chart'), {
+        type: 'bar',
+        data: {
+            labels: monthLabels,
+            datasets: [{
+                label: "Order Count",
+                data: chartData.count_orders.slice(-5),
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 2
+            }]
+        },
+        options: { scales: { y: { beginAtZero: true } } }
+    });
+  </script>
+{% endblock content %}

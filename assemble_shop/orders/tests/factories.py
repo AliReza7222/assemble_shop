@@ -30,7 +30,7 @@ class ReviewFactory(BaseFactory):
 class DiscountFactory(BaseFactory):
     product = SubFactory(ProductFactory)
     discount_percentage = LazyFunction(
-        lambda: decimal.Decimal(Faker("random_int", max=100, min=0))
+        lambda: decimal.Decimal(random.randint(0, 100))
     )
     start_date = Faker("date_time_this_year")
     end_date = Faker("date_time_this_year", after_now=True)

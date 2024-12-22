@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 import pytest
 from django.contrib.auth.models import Group, Permission
+from django.utils import timezone
 from faker import Faker
 
 from assemble_shop.orders.models import Discount, Product, Review
@@ -41,6 +43,18 @@ def create_product(db) -> Callable:
         return ProductFactory(**kwargs)
 
     return _create
+
+
+@pytest.fixture
+def product_with_discount(db, create_product, create_discount) -> Product:
+    product = create_product(name="CheapProduct")
+    create_discount(
+        product=product,
+        discount_percentage=Decimal("99.99"),
+        start_date=timezone.now(),
+        end_date=timezone.now() + timezone.timedelta(days=7),  # type: ignore
+    )
+    return product
 
 
 @pytest.fixture

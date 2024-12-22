@@ -28,6 +28,14 @@ def _media_storage(settings, tmpdir) -> None:
 
 
 @pytest.fixture
+def create_user(db) -> Callable:
+    def _create_user(**kwargs) -> UserType:
+        return UserFactory(**kwargs)
+
+    return _create_user
+
+
+@pytest.fixture
 def user(db) -> UserType:
     return UserFactory()
 
@@ -47,7 +55,7 @@ def create_product(db) -> Callable:
 
 @pytest.fixture
 def product_with_discount(db, create_product, create_discount) -> Product:
-    product = create_product(name="CheapProduct")
+    product = ProductFactory(name="CheapProduct")
     create_discount(
         product=product,
         discount_percentage=Decimal("99.99"),
@@ -74,16 +82,15 @@ def create_discount(db) -> Callable:
 
 
 @pytest.fixture
-def create_user_with_permissions(db, user) -> Callable:
+def create_user_with_permissions(db, create_user) -> Callable:
     def _create_user_with_permissions(group_name: str) -> UserType:
+        user = create_user(is_staff=True)
         group, _ = Group.objects.get_or_create(name=group_name)
         permissions = Permission.objects.filter(
             codename__in=PERMISIONS.get(group_name, [])
         )
         group.permissions.set(permissions)
         user.groups.add(group)
-        user.is_staff = True
-        user.save()
         return user
 
     return _create_user_with_permissions

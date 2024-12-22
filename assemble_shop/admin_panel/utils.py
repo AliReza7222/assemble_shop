@@ -23,7 +23,7 @@ def get_label_months():
 
 def get_order_data():
     orders = Order.objects.filter(
-        created_at__gte=get_past_date(month=5),
+        created_at__gte=get_past_date(month=4),
         status=OrderStatusEnum.COMPLETED.name,
     )
     monthly_income = (
@@ -52,7 +52,7 @@ def top_products():
 def top_customers():
     return (
         Order.objects.filter(
-            created_at__gte=get_past_date(month=1),
+            created_at__gte=get_past_date(month=0),
             status=OrderStatusEnum.COMPLETED.name,
         )
         .values("created_by__email")

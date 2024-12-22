@@ -3,6 +3,7 @@ from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
 
+from assemble_shop.orders.enums import OrderStatusEnum
 from assemble_shop.orders.models import Order, Product
 
 
@@ -21,7 +22,10 @@ def get_label_months():
 
 
 def get_order_data():
-    orders = Order.objects.filter(created_at__gte=get_past_date(month=5))
+    orders = Order.objects.filter(
+        created_at__gte=get_past_date(month=5),
+        status=OrderStatusEnum.COMPLETED.name,
+    )
     monthly_income = (
         orders.annotate(month=TruncMonth("created_at"))
         .values("month")
@@ -47,7 +51,10 @@ def top_products():
 
 def top_customers():
     return (
-        Order.objects.filter(created_at__gte=get_past_date(month=1))
+        Order.objects.filter(
+            created_at__gte=get_past_date(month=1),
+            status=OrderStatusEnum.COMPLETED.name,
+        )
         .values("created_by__email")
         .annotate(total_cost=Sum("total_price"))
         .order_by("-total_cost")

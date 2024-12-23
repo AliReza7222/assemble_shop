@@ -1,7 +1,4 @@
-import decimal
-import random
-
-from factory import Faker, LazyFunction, SubFactory
+from factory import Faker, SubFactory
 
 from assemble_shop.base.factories import BaseFactory
 from assemble_shop.orders.models import Discount, Product, Review
@@ -9,8 +6,11 @@ from assemble_shop.orders.models import Discount, Product, Review
 
 class ProductFactory(BaseFactory):
     name = Faker("word")
-    price = LazyFunction(
-        lambda: decimal.Decimal(random.randint(100, 10000)) / 100
+    price = Faker(
+        "pydecimal",
+        left_digits=3,
+        right_digits=2,
+        positive=True,
     )
     inventory = Faker("random_int", min=0, max=100)
 
@@ -29,8 +29,8 @@ class ReviewFactory(BaseFactory):
 
 class DiscountFactory(BaseFactory):
     product = SubFactory(ProductFactory)
-    discount_percentage = LazyFunction(
-        lambda: decimal.Decimal(random.randint(0, 100))
+    discount_percentage = Faker(
+        "pydecimal", left_digits=2, right_digits=2, positive=True, max_value=100
     )
     start_date = Faker("date_time_this_year")
     end_date = Faker("date_time_this_year", after_now=True)

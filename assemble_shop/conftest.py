@@ -10,11 +10,7 @@ from django.utils import timezone
 from faker import Faker
 
 from assemble_shop.orders.models import Discount, Product, Review
-from assemble_shop.orders.tests.factories import (
-    DiscountFactory,
-    ProductFactory,
-    ReviewFactory,
-)
+from assemble_shop.orders.tests.factories import *
 from assemble_shop.users.groups import *
 from assemble_shop.users.tests.factories import UserFactory
 
@@ -54,13 +50,14 @@ def create_product(db) -> Callable:
 
 
 @pytest.fixture
-def product_with_discount(db, create_product, create_discount) -> Product:
+def product_with_discount(db, create_discount) -> Product:
     product = ProductFactory(name="CheapProduct")
     create_discount(
         product=product,
         discount_percentage=Decimal("99.99"),
         start_date=timezone.now(),
         end_date=timezone.now() + timezone.timedelta(days=7),  # type: ignore
+        is_active=True,
     )
     return product
 
@@ -109,3 +106,11 @@ def user_storemanager(db, create_user_with_permissions):
 @pytest.fixture
 def user_customer(db, create_user_with_permissions):
     return create_user_with_permissions(CUSTOMER)
+
+
+@pytest.fixture
+def create_order_with_items(db):
+    def _create_order_with_items(products: list = []):
+        return OrderWithMultipleOrderItem(products=products)
+
+    return _create_order_with_items

@@ -45,7 +45,7 @@ def update_pending_orders_after_discount_change(sender, instance, **kwargs):
     when a discount is changed, and recalculates total prices.
     """
     order_items = OrderItem.objects.filter(
-        order__status=OrderStatusEnum.PENDING.name, product__discounts=instance
+        order__status=OrderStatusEnum.PENDING.name, product=instance.product
     ).select_related("order")
 
     order_items.update(discount_percentage=instance.discount_percentage)

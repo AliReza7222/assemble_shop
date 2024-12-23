@@ -151,7 +151,6 @@ class OrderItem(models.Model):
     @property
     def get_product_price(self):
         discount_product = self.product.discounted_price
-        print(discount_product, self.order, self.product)
         return (
             self.price * self.quantity  # type:ignore
             if discount_product is None

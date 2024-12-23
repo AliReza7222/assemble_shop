@@ -4,14 +4,8 @@ from django.db.models import Avg
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
-from assemble_shop.orders.enums import OrderStatusEnum
-from assemble_shop.orders.models import (
-    Discount,
-    Order,
-    OrderItem,
-    Product,
-    Review,
-)
+from .enums import OrderStatusEnum
+from .models import *
 
 
 @receiver(post_save, sender=Review)
@@ -38,28 +32,6 @@ def update_price_and_discount_for_order_item(sender, instance, **kwargs):
         instance.discount_percentage = discount.discount_percentage
 
 
-@receiver(post_save, sender=Discount)
-def update_pending_orders_after_discount_change(sender, instance, **kwargs):
-    """
-    Updates the discount percentage for pending order items
-    when a discount is changed or created, and recalculates total prices.
-    """
-    update_pending_orders_discount_products(
-        instance.product, discount_percentage=instance.discount_percentage
-    )
-
-
-@receiver(post_delete, sender=Discount)
-def update_pending_orders_after_discount_deleted(sender, instance, **kwargs):
-    """
-    Updates the discount percentage for pending order items
-    when a discount is deleted.
-    """
-    update_pending_orders_discount_products(
-        instance.product, discount_percentage=None
-    )
-
-
 @receiver(post_save, sender=OrderItem)
 @receiver(post_delete, sender=OrderItem)
 def update_total_price_after_order_item_change(sender, instance, **kwargs):
@@ -73,45 +45,66 @@ def update_total_price_after_order_item_change(sender, instance, **kwargs):
     order.save(update_fields=["total_price"])
 
 
+@receiver(post_save, sender=Discount)
+def update_pending_orders_after_discount_change(sender, instance, **kwargs):
+    """
+    Updates the discount percentage for pending order items
+    when a discount is changed or created, and recalculates total prices.
+    """
+    discount_percentage = None
+    if (
+        instance.is_active
+        and instance.start_date <= timezone.now() <= instance.end_date
+    ):
+        discount_percentage = instance.discount_percentage
+
+    update_total_price_for_orders_pending(
+        product=instance.product,
+        data={"discount_percentage": discount_percentage},
+    )
+
+
+@receiver(post_delete, sender=Discount)
+def update_pending_orders_after_discount_deleted(sender, instance, **kwargs):
+    """
+    Updates the discount percentage for pending order items
+    when a discount is deleted.
+    """
+    update_total_price_for_orders_pending(
+        product=instance.product, data={"discount_percentage": None}
+    )
+
+
 @receiver(post_save, sender=Product)
 def update_orders_after_product_change(sender, instance, **kwargs):
     """
     Updates the price in pending order items when a product's price changes
     and recalculates total prices of affected orders.
     """
-    order_items = OrderItem.objects.filter(
-        product=instance, order__status=OrderStatusEnum.PENDING.name
-    ).select_related("order")
-    for item in order_items:
-        item.price = instance.price
-    OrderItem.objects.bulk_update(order_items, ["price"])
+    if instance.order_items.exists():
+        update_total_price_for_orders_pending(
+            product=instance, data={"price": instance.price}
+        )
 
+
+def update_total_price_for_orders_pending(product, data):
+    """
+    Updates the pending order items and recalculates total prices for affected orders.
+    """
+    order_items = (
+        OrderItem.objects.filter(
+            order__status=OrderStatusEnum.PENDING.name, product=product
+        )
+        .select_related("order")
+        .select_related("product")
+    )
+
+    order_items.update(**data)
     affected_orders = [item.order for item in order_items]
-    update_total_price_for_orders(affected_orders)
 
-
-def update_total_price_for_orders(orders):
-    """
-    Updates the total price for the given orders.
-    """
-    for order in orders:
+    for order in affected_orders:
         order.total_price = sum(
             item.get_product_price for item in order.items.all()
         )
 
-    Order.objects.bulk_update(orders, ["total_price"])
-
-
-def update_pending_orders_discount_products(product, discount_percentage=None):
-    """
-    Updates the discount percentage for pending order items
-    and recalculates total prices for affected orders.
-    """
-    order_items = OrderItem.objects.filter(
-        order__status=OrderStatusEnum.PENDING.name, product=product
-    ).select_related("order")
-
-    order_items.update(discount_percentage=discount_percentage)
-
-    affected_orders = [item.order for item in order_items]
-    update_total_price_for_orders(affected_orders)
+    Order.objects.bulk_update(affected_orders, ["total_price"])

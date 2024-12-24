@@ -18,7 +18,7 @@ class ProductRequiredValidation(ValidationStrategy):
 
 class QuantityValidation(ValidationStrategy):
     def validate(self, data):
-        if data.get("quantity") < 1:
+        if data and data.get("quantity") < 1:
             raise ValidationError(
                 _(
                     f"Quantity must be at least 1 for product {data.get('product')}."
@@ -29,7 +29,7 @@ class QuantityValidation(ValidationStrategy):
 class StockValidation(ValidationStrategy):
     def validate(self, data):
         product = data.get("product")
-        if product.inventory < data.get("quantity"):
+        if product and product.inventory < data.get("quantity"):
             raise ValidationError(
                 _(
                     f"Insufficient stock for the selected product {product} quantity."

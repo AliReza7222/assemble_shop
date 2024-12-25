@@ -61,11 +61,6 @@ class OrderItemFactory(DjangoModelFactory):
     order = factory.SubFactory(OrderFactory)
     product = factory.SubFactory(ProductFactory)
     price = factory.SelfAttribute("product.price")
-    discount_percentage = factory.LazyAttribute(
-        lambda obj: obj.product.discount_now.discount_percentage
-        if obj.product.discount_now
-        else None
-    )
 
     class Meta:
         model = OrderItem

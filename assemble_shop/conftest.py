@@ -8,7 +8,6 @@ import pytest
 from django.contrib.auth.models import Group, Permission
 from django.forms.models import inlineformset_factory
 from django.utils import timezone
-from faker import Faker
 
 from assemble_shop.orders.enums import OrderStatusEnum
 from assemble_shop.orders.formsets import OrderItemFormset
@@ -37,11 +36,6 @@ def create_user(db) -> Callable:
 @pytest.fixture
 def user(db) -> UserType:
     return UserFactory()
-
-
-@pytest.fixture
-def faker() -> Faker:
-    return Faker()
 
 
 @pytest.fixture

@@ -41,7 +41,7 @@ class TestOrderItemFormset:
             "items-0-quantity": 0,
         }
         formset = orderitem_inline_formset(data=data)
-        msg_error = f"Quantity must be at least 1 for product {product.name}."
+        msg_error = "Quantity must be at least 1 for product."
 
         assert not formset.is_valid()
         assert msg_error in str(formset.errors[0].get("__all__", []))

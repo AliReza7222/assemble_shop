@@ -108,7 +108,7 @@ class OrderAdmin(BaseAdmin):
         new_order = Order.objects.create(
             created_by=request.user, updated_by=request.user
         )
-        for item in old_order.items.all():
+        for item in old_order.items.all().select_related("product"):
             new_item_data = {
                 "order": new_order,
                 "product": item.product,
@@ -186,9 +186,9 @@ class OrderAdmin(BaseAdmin):
 
         custom_urls = [
             path(
-                "<int:order_id>/finalize_order/",
+                "<int:order_id>/confirime_order/",
                 self.admin_site.admin_view(self.confirimed_order_view),
-                name="orders_order_confirimed_order",
+                name="orders_order_confirmed_order",
             ),
             path(
                 "<int:order_id>/cancel_order/",

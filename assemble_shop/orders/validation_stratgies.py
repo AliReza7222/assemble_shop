@@ -18,7 +18,8 @@ class ProductRequiredValidation(ValidationStrategy):
 
 class QuantityValidation(ValidationStrategy):
     def validate(self, data):
-        if data.get("quantity", 0) < 1:
+        quantity = data.get("quantity")
+        if quantity is not None and quantity < 1:
             raise ValidationError(_("Quantity must be at least 1 for product."))
 
 

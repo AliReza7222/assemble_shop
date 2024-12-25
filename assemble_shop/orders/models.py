@@ -121,13 +121,13 @@ class OrderItem(models.Model):
         Product,
         verbose_name=_("Product"),
         related_name="order_items",
-        on_delete=models.DO_NOTHING,
+        on_delete=models.CASCADE,
     )
     order = models.ForeignKey(
         Order,
         verbose_name=_("Order"),
         related_name="items",
-        on_delete=models.DO_NOTHING,
+        on_delete=models.CASCADE,
     )
     quantity = models.PositiveIntegerField(
         default=1, verbose_name=_("Quantity")

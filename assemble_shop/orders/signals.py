@@ -6,6 +6,7 @@ from django.dispatch import receiver
 
 from .enums import OrderStatusEnum
 from .models import *
+from .utils import get_total_price_order
 
 
 @receiver(post_save, sender=Review)
@@ -40,8 +41,7 @@ def update_total_price_after_order_item_change(sender, instance, **kwargs):
     is created, updated, or deleted.
     """
     order = instance.order
-    total_price = sum(item.get_product_price for item in order.items.all())
-    order.total_price = total_price
+    order.total_price = get_total_price_order(order)
     order.save(update_fields=["total_price"])
 
 
@@ -103,8 +103,6 @@ def update_total_price_for_orders_pending(product, data):
     affected_orders = [item.order for item in order_items]
 
     for order in affected_orders:
-        order.total_price = sum(
-            item.get_product_price for item in order.items.all()
-        )
+        order.total_price = get_total_price_order(order)
 
     Order.objects.bulk_update(affected_orders, ["total_price"])

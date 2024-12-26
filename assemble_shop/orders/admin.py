@@ -9,6 +9,7 @@ from assemble_shop.orders.enums import *
 from assemble_shop.orders.forms import DiscountForm
 from assemble_shop.orders.formsets import OrderItemFormset
 from assemble_shop.orders.models import *
+from assemble_shop.orders.utils import get_total_price_order
 
 
 @admin.register(Product)
@@ -122,9 +123,7 @@ class OrderAdmin(BaseAdmin):
             }
             new_items_order.append(OrderItem(**new_item_data))
         OrderItem.objects.bulk_create(new_items_order)
-        new_order.total_price = sum(
-            item.get_product_price for item in new_items_order
-        )
+        new_order.total_price = get_total_price_order(new_order)
         new_order.save(update_fields=["total_price"])
 
         self.message_user(

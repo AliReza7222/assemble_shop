@@ -148,15 +148,6 @@ class OrderItem(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
-    @property
-    def get_product_price(self):
-        discount_product = self.product.discounted_price
-        return (
-            self.price * self.quantity  # type:ignore
-            if discount_product is None
-            else discount_product * self.quantity
-        )
-
     def __str__(self):
         return f"{self.order} | {self.product}"
 

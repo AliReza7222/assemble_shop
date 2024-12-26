@@ -91,16 +91,14 @@ def update_total_price_for_orders_pending(product, data):
     """
     Updates the pending order items and recalculates total prices for affected orders.
     """
-    order_items = (
-        OrderItem.objects.filter(
-            order__status=OrderStatusEnum.PENDING.name, product=product
-        )
-        .select_related("order")
-        .select_related("product")
-    )
+    order_items = OrderItem.objects.filter(
+        order__status=OrderStatusEnum.PENDING.name, product=product
+    ).select_related("order", "product")
 
     order_items.update(**data)
-    affected_orders = [item.order for item in order_items]
+    affected_orders = Order.objects.filter(
+        id__in=order_items.values_list("order", flat=True)
+    )
 
     for order in affected_orders:
         order.total_price = get_total_price_order(order)

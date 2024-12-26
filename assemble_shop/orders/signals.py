@@ -4,9 +4,8 @@ from django.db.models import Avg
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
-from .enums import OrderStatusEnum
 from .models import *
-from .utils import get_total_price_order
+from .utils import get_total_price_order, update_total_price_for_orders_pending
 
 
 @receiver(post_save, sender=Review)
@@ -85,22 +84,3 @@ def update_orders_after_product_change(sender, instance, **kwargs):
         update_total_price_for_orders_pending(
             product=instance, data={"price": instance.price}
         )
-
-
-def update_total_price_for_orders_pending(product, data):
-    """
-    Updates the pending order items and recalculates total prices for affected orders.
-    """
-    order_items = OrderItem.objects.filter(
-        order__status=OrderStatusEnum.PENDING.name, product=product
-    ).select_related("order", "product")
-
-    order_items.update(**data)
-    affected_orders = Order.objects.filter(
-        id__in=order_items.values_list("order", flat=True)
-    )
-
-    for order in affected_orders:
-        order.total_price = get_total_price_order(order)
-
-    Order.objects.bulk_update(affected_orders, ["total_price"])

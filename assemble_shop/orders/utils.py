@@ -11,7 +11,8 @@ from django.db.models import (
 )
 from django.utils import timezone
 
-from assemble_shop.orders.models import Order
+from assemble_shop.orders.enums import OrderStatusEnum
+from assemble_shop.orders.models import Order, OrderItem
 
 
 def get_items_with_price_based_quantity(order: Order) -> QuerySet:
@@ -48,3 +49,22 @@ def get_total_price_order(order: Order) -> Decimal:
     items = get_items_with_price_based_quantity(order)
     total = items.aggregate(total=Sum("total_item_price"))["total"]
     return total.quantize(Decimal("0.01")) if total else Decimal("0.00")
+
+
+def update_total_price_for_orders_pending(product, data):
+    """
+    Updates the pending order items and recalculates total prices for affected orders.
+    """
+    order_items = OrderItem.objects.filter(
+        order__status=OrderStatusEnum.PENDING.name, product=product
+    ).select_related("order", "product")
+
+    order_items.update(**data)
+    affected_orders = Order.objects.filter(
+        id__in=order_items.values_list("order", flat=True)
+    )
+
+    for order in affected_orders:
+        order.total_price = get_total_price_order(order)
+
+    Order.objects.bulk_update(affected_orders, ["total_price"])

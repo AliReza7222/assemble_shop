@@ -144,9 +144,18 @@ class OrderAdmin(BaseAdmin):
     @transaction.atomic
     def confirimed_order_view(self, request, order_id):
         order = self.get_object(request, order_id)
+        items = order.items.select_related("product")  # type: ignore
         products_updated = []
 
-        for item in order.items.select_related("product"):  # type: ignore
+        if not items.count():
+            self.message_user(
+                request,
+                "You can't Confirmed without item.",
+                level="error",
+            )
+            return HttpResponseRedirect(request.headers.get("referer"))
+
+        for item in items:
             if item.product.inventory < item.quantity:
                 self.message_user(
                     request,

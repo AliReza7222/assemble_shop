@@ -182,7 +182,10 @@ class Discount(BaseModel):
         on_delete=models.CASCADE,
     )
     discount_percentage = models.DecimalField(
-        verbose_name=_("Discount Percentage"), max_digits=10, decimal_places=2
+        verbose_name=_("Discount Percentage"),
+        max_digits=5,
+        decimal_places=2,
+        validators=[MaxValueValidator(100), MinValueValidator(1)],
     )
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()

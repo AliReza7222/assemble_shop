@@ -41,10 +41,9 @@ class Product(BaseModel):
 
     @property
     def discounted_price(self):
-        discount = self.discount_now
-        if discount:
-            discounted_price = self.price - (
-                self.price * (discount.discount_percentage / 100)
+        if discount := self.discount_now:
+            discounted_price = self.price * (
+                1 - (discount.discount_percentage / 100)
             )
             return Decimal(discounted_price).quantize(Decimal("0.01"))
         return
@@ -121,13 +120,13 @@ class OrderItem(models.Model):
         Product,
         verbose_name=_("Product"),
         related_name="order_items",
-        on_delete=models.DO_NOTHING,
+        on_delete=models.CASCADE,
     )
     order = models.ForeignKey(
         Order,
         verbose_name=_("Order"),
         related_name="items",
-        on_delete=models.DO_NOTHING,
+        on_delete=models.CASCADE,
     )
     quantity = models.PositiveIntegerField(
         default=1, verbose_name=_("Quantity")
@@ -147,15 +146,6 @@ class OrderItem(models.Model):
         blank=True,
     )
     created_at = models.DateTimeField(auto_now_add=True)
-
-    @property
-    def get_product_price(self):
-        discount_product = self.product.discounted_price
-        return (
-            self.price * self.quantity  # type:ignore
-            if discount_product is None
-            else discount_product * self.quantity
-        )
 
     def __str__(self):
         return f"{self.order} | {self.product}"
@@ -192,7 +182,10 @@ class Discount(BaseModel):
         on_delete=models.CASCADE,
     )
     discount_percentage = models.DecimalField(
-        verbose_name=_("Discount Percentage"), max_digits=10, decimal_places=2
+        verbose_name=_("Discount Percentage"),
+        max_digits=5,
+        decimal_places=2,
+        validators=[MaxValueValidator(100), MinValueValidator(1)],
     )
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()

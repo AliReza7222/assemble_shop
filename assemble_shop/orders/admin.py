@@ -9,6 +9,7 @@ from assemble_shop.orders.enums import *
 from assemble_shop.orders.forms import DiscountForm
 from assemble_shop.orders.formsets import OrderItemFormset
 from assemble_shop.orders.models import *
+from assemble_shop.orders.utils import get_total_price_order
 
 
 @admin.register(Product)
@@ -108,7 +109,7 @@ class OrderAdmin(BaseAdmin):
         new_order = Order.objects.create(
             created_by=request.user, updated_by=request.user
         )
-        for item in old_order.items.all():
+        for item in old_order.items.all().select_related("product"):
             new_item_data = {
                 "order": new_order,
                 "product": item.product,
@@ -122,9 +123,7 @@ class OrderAdmin(BaseAdmin):
             }
             new_items_order.append(OrderItem(**new_item_data))
         OrderItem.objects.bulk_create(new_items_order)
-        new_order.total_price = sum(
-            item.get_product_price for item in new_items_order
-        )
+        new_order.total_price = get_total_price_order(new_order)
         new_order.save(update_fields=["total_price"])
 
         self.message_user(
@@ -186,9 +185,9 @@ class OrderAdmin(BaseAdmin):
 
         custom_urls = [
             path(
-                "<int:order_id>/finalize_order/",
+                "<int:order_id>/confirime_order/",
                 self.admin_site.admin_view(self.confirimed_order_view),
-                name="orders_order_confirimed_order",
+                name="orders_order_confirmed_order",
             ),
             path(
                 "<int:order_id>/cancel_order/",

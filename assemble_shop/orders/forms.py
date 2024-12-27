@@ -1,7 +1,11 @@
 from django import forms
-from django.utils.translation import gettext_lazy as _
 
 from assemble_shop.orders.models import Discount
+from assemble_shop.orders.validation_stratgies import (
+    ValidateNoOverlappingDiscounts,
+    ValidateStartDateBeforeEndDate,
+    ValidateStartDateNotInPast,
+)
 
 
 class DiscountForm(forms.ModelForm):
@@ -11,22 +15,14 @@ class DiscountForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        cleaned_data.update({"instance": self.instance})  # type: ignore
+        validations = (
+            ValidateStartDateNotInPast(),
+            ValidateStartDateBeforeEndDate(),
+            ValidateNoOverlappingDiscounts(),
+        )
+        for validation in validations:
+            validation.validate(data=cleaned_data)
 
-        if cleaned_data.get("start_date") > cleaned_data.get("end_date"):  # type: ignore
-            raise forms.ValidationError(
-                _("The start date cannot be later than the end date.")
-            )
-
-        product = cleaned_data.get("product")  # type: ignore
-
-        latest_discount = product.discounts.filter(  # type: ignore
-            start_date__lte=cleaned_data.get("end_date"),  # type: ignore
-            end_date__gte=cleaned_data.get("start_date"),  # type: ignore
-        ).exclude(id=self.instance.id)
-
-        if latest_discount.exists():
-            raise forms.ValidationError(
-                _("This product already has an overlapping discount.")
-            )
-
+        del cleaned_data["instance"]  # type: ignore
         return cleaned_data

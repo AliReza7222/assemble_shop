@@ -33,8 +33,10 @@ PERMISIONS = {
         "add_order",
         "view_order",
         # Review
+        "add_review",
         "view_review",
         "change_review",
+        "delete_review",
         # Discount
         "add_discount",
         "view_discount",

@@ -4,7 +4,6 @@ from assemble_shop.orders.models import Discount
 from assemble_shop.orders.validation_stratgies import (
     ValidateNoOverlappingDiscounts,
     ValidateStartDateBeforeEndDate,
-    ValidateStartDateNotInPast,
 )
 
 
@@ -17,7 +16,6 @@ class DiscountForm(forms.ModelForm):
         cleaned_data = super().clean()
         cleaned_data.update({"instance": self.instance})  # type: ignore
         validations = (
-            ValidateStartDateNotInPast(),
             ValidateStartDateBeforeEndDate(),
             ValidateNoOverlappingDiscounts(),
         )

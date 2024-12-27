@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 
 from django.core.exceptions import ValidationError
-from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 
@@ -33,13 +32,6 @@ class StockValidation(ValidationStrategy):
                     f"Insufficient stock for the selected product {product} quantity."
                 )
             )
-
-
-class ValidateStartDateNotInPast(ValidationStrategy):
-    def validate(self, data):
-        print("hello")
-        if data.get("start_date") < timezone.now():
-            raise ValidationError(_("You can't make a discount in the past."))
 
 
 class ValidateStartDateBeforeEndDate(ValidationStrategy):

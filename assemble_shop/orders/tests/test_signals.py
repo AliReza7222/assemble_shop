@@ -50,6 +50,41 @@ class TestOrderSignal:
         )
         assert order.items.count() == 2
 
+    def test_updated_discount_in_status_pending(
+        self, create_product, create_order, create_discount
+    ):
+        product1 = create_product(name="Product1", price=Decimal("150.83"))
+        product2 = create_product(name="Product2", price=Decimal("500"))
+        order = create_order(products=[product1, product2])
+        old_total_price = order.total_price
+
+        create_discount(
+            product=product2, discount_percentage=Decimal("50"), is_active=True
+        )
+        order.refresh_from_db()
+
+        assert order.total_price != old_total_price
+        assert order.total_price == pytest.approx(
+            Decimal("250") + Decimal("150.83")
+        )
+
+    def test_updated_discount_not_in_status_pending(
+        self, create_product, create_order, create_discount
+    ):
+        product1 = create_product(name="Product1", price=Decimal("150.83"))
+        product2 = create_product(name="Product2", price=Decimal("500"))
+        order = create_order(
+            products=[product1, product2], status=OrderStatusEnum.CONFIRMED.name
+        )
+        old_total_price = order.total_price
+
+        create_discount(
+            product=product2, discount_percentage=Decimal("50"), is_active=True
+        )
+        order.refresh_from_db()
+
+        assert order.total_price == old_total_price
+
     def test_create_and_delete_discount_in_status_pending(
         self, create_product, create_discount, create_order
     ):
@@ -68,13 +103,15 @@ class TestOrderSignal:
         order.refresh_from_db()
         assert order.total_price == pytest.approx(
             product1.price + product2.discounted_price
-        )
+        ), f"Expected total price with discount to be {product1.price + product2.discounted_price},\
+             but got {order.total_price}"
 
         discount_product2.delete()
         order.refresh_from_db()
         assert order.total_price == pytest.approx(
             product1.price + product2.price
-        )
+        ), f"Expected total price when deleted discount to be {product1.price + product2.price}, \
+             but got {order.total_price}"
 
     def test_update_product_in_status_pending(
         self, create_product, create_order

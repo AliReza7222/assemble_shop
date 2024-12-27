@@ -41,10 +41,9 @@ class Product(BaseModel):
 
     @property
     def discounted_price(self):
-        discount = self.discount_now
-        if discount:
-            discounted_price = self.price - (
-                self.price * (discount.discount_percentage / 100)
+        if discount := self.discount_now:
+            discounted_price = self.price * (
+                1 - (discount.discount_percentage / 100)
             )
             return Decimal(discounted_price).quantize(Decimal("0.01"))
         return

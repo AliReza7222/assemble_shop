@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.db.models import Avg
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
+from django.utils import timezone
 
 from .models import *
 from .utils import get_total_price_order, update_total_price_for_orders_pending
@@ -44,13 +45,27 @@ def update_total_price_after_order_item_change(sender, instance, **kwargs):
     order.save(update_fields=["total_price"])
 
 
+@receiver(pre_save, sender=Discount)
+def capture_old_discount_instance(sender, instance, **kwargs):
+    """
+    Captures the old discount associated with the product
+    before saving the Discount instance if exists.
+    """
+    instance._old_discount = instance.product.discount_now
+
+
 @receiver(post_save, sender=Discount)
 def update_pending_orders_after_discount_change(sender, instance, **kwargs):
     """
     Updates the discount percentage for pending order items
     when a discount is changed or created, and recalculates total prices.
     """
-    discount_percentage = None
+    discount_percentage = (
+        instance._old_discount.discount_percentage
+        if instance._old_discount
+        else None
+    )
+
     if (
         instance.is_active
         and instance.start_date <= timezone.now() <= instance.end_date
@@ -74,13 +89,26 @@ def update_pending_orders_after_discount_deleted(sender, instance, **kwargs):
     )
 
 
+@receiver(pre_save, sender=Product)
+def capture_old_product_instance(sender, instance, **kwargs):
+    """
+    Captures the current the Product instance from the database
+    before saving any changes.
+    """
+    instance._old_instance = Product.objects.filter(pk=instance.pk).first()
+
+
 @receiver(post_save, sender=Product)
 def update_orders_after_product_change(sender, instance, **kwargs):
     """
     Updates the price in pending order items when a product's price changes
     and recalculates total prices of affected orders.
     """
-    if instance.order_items.exists():
-        update_total_price_for_orders_pending(
-            product=instance, data={"price": instance.price}
-        )
+    if old_instance := getattr(instance, "_old_instance", None):
+        if (
+            instance.order_items.exists()
+            and old_instance.price != instance.price
+        ):
+            update_total_price_for_orders_pending(
+                product=instance, data={"price": instance.price}
+            )

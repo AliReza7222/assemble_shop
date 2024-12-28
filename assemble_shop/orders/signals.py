@@ -3,7 +3,6 @@ from decimal import Decimal
 from django.db.models import Avg
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
-from django.utils import timezone
 
 from .models import *
 from .utils import get_total_price_order, update_total_price_for_orders_pending
@@ -45,36 +44,20 @@ def update_total_price_after_order_item_change(sender, instance, **kwargs):
     order.save(update_fields=["total_price"])
 
 
-@receiver(pre_save, sender=Discount)
-def capture_old_discount_instance(sender, instance, **kwargs):
-    """
-    Captures the old discount associated with the product
-    before saving the Discount instance if exists.
-    """
-    instance._old_discount = instance.product.discount_now
-
-
 @receiver(post_save, sender=Discount)
 def update_pending_orders_after_discount_change(sender, instance, **kwargs):
     """
     Updates the discount percentage for pending order items
     when a discount is changed or created, and recalculates total prices.
     """
-    discount_percentage = (
-        instance._old_discount.discount_percentage
-        if instance._old_discount
-        else None
-    )
-
-    if (
-        instance.is_active
-        and instance.start_date <= timezone.now() <= instance.end_date
-    ):
-        discount_percentage = instance.discount_percentage
 
     update_total_price_for_orders_pending(
         product=instance.product,
-        data={"discount_percentage": discount_percentage},
+        data={
+            "discount_percentage": instance.product.discount_now.discount_percentage
+            if instance.product.discount_now
+            else None
+        },
     )
 
 

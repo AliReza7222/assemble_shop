@@ -63,8 +63,9 @@ def update_orders_pending(product: Product, data: dict) -> None:
     ).select_related("order", "product")
 
     order_items.update(**data)
-    if order_ids := order_items.values_list("order", flat=True):
-        update_order_total_price(order_ids=order_ids)  # type: ignore
+    update_order_total_price(
+        order_ids=order_items.values_list("order", flat=True)  # type: ignore
+    )
 
 
 def get_order_items(order_id: int) -> QuerySet:

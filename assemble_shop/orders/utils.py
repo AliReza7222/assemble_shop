@@ -1,9 +1,6 @@
-from decimal import Decimal
-
 from django.db.models import (
     Case,
     DecimalField,
-    ExpressionWrapper,
     F,
     OuterRef,
     QuerySet,
@@ -31,42 +28,33 @@ def _get_active_discount_subquery():
     ).values("discount_percentage")[:1]
 
 
-def _get_items_price_based_on_quantity(order: Order) -> QuerySet:
+def update_order_total_price(order_ids: list[int]) -> None:
     """
-    Annotates each order item with its effective price after applying any active discount
-    and calculates the total item price based on quantity.
+    Updates the total price for orders given a list of order IDs.
     """
-    discount_subquery = _get_active_discount_subquery()
-
-    return order.items.annotate(
-        discount_percentage_now=Subquery(discount_subquery),
-        total_item_price=ExpressionWrapper(
-            F("quantity")
+    order_subquery = Order.objects.filter(
+        pk=OuterRef("pk"), id__in=order_ids
+    ).annotate(
+        total_price_updated=Sum(
+            F("items__quantity")
             * Case(
                 When(
-                    discount_percentage_now__isnull=False,
-                    then=F("product__price")
-                    * (1 - F("discount_percentage_now") / 100),
+                    items__discount_percentage__isnull=False,
+                    then=F("items__price")
+                    * (1 - F("items__discount_percentage") / 100),
                 ),
-                default=F("product__price"),
+                default=F("items__price"),
                 output_field=DecimalField(max_digits=10, decimal_places=2),
-            ),
-            output_field=DecimalField(max_digits=10, decimal_places=2),
-        ),
+            )
+        )
+    )
+
+    Order.objects.filter(id__in=order_ids).update(
+        total_price=Subquery(order_subquery.values("total_price_updated")[:1])
     )
 
 
-def get_total_price_order(order: Order) -> Decimal:
-    """
-    Calculates the total price of an order by summing up the total price of each item,
-    considering quantity and any discount at the database.
-    """
-    items = _get_items_price_based_on_quantity(order)
-    total = items.aggregate(total=Sum("total_item_price"))["total"]
-    return total.quantize(Decimal("0.01")) if total else Decimal("0.00")
-
-
-def update_total_price_for_orders_pending(product: Product, data: dict) -> None:
+def update_orders_pending(product: Product, data: dict) -> None:
     """
     Updates the pending order items and recalculates total prices for affected orders.
     """
@@ -75,14 +63,8 @@ def update_total_price_for_orders_pending(product: Product, data: dict) -> None:
     ).select_related("order", "product")
 
     order_items.update(**data)
-    affected_orders = Order.objects.filter(
-        id__in=order_items.values_list("order", flat=True)
-    )
-
-    for order in affected_orders:
-        order.total_price = get_total_price_order(order)
-
-    Order.objects.bulk_update(affected_orders, ["total_price"])
+    if order_ids := order_items.values_list("order", flat=True):
+        update_order_total_price(order_ids=order_ids)  # type: ignore
 
 
 def get_order_items(order_id: int) -> QuerySet:
@@ -127,8 +109,7 @@ def regenerate_order(order_id: int, user: User) -> Order:
         for item in items
     ]
     OrderItem.objects.bulk_create(new_items_order)
-    new_order.total_price = get_total_price_order(new_order)
-    new_order.save(update_fields=["total_price"])
+    update_order_total_price(order_ids=[new_order.id])
     return new_order
 
 

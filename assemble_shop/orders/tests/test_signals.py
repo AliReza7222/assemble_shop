@@ -29,6 +29,7 @@ class TestOrderSignal:
         product1 = create_product(name="Product1", price=Decimal("150.83"))
         product2 = create_product(name="Product2", price=Decimal("173.49"))
         order = create_order(products=[product1, product2])
+        order.refresh_from_db()
 
         assert order.total_price == pytest.approx(
             product1.price + product2.price
@@ -44,6 +45,7 @@ class TestOrderSignal:
         """
         product = create_product(name="Product", price=Decimal("150.83"))
         order = create_order(products=[product, product_with_discount])
+        order.refresh_from_db()
 
         assert order.total_price == pytest.approx(
             product.price + product_with_discount.discounted_price
@@ -76,12 +78,12 @@ class TestOrderSignal:
         order = create_order(
             products=[product1, product2], status=OrderStatusEnum.CONFIRMED.name
         )
+        order.refresh_from_db()
         old_total_price = order.total_price
 
         create_discount(
             product=product2, discount_percentage=Decimal("50"), is_active=True
         )
-        order.refresh_from_db()
 
         assert order.total_price == old_total_price
 
@@ -140,6 +142,7 @@ class TestOrderSignal:
         order = create_order(
             products=[product1, product2], status=OrderStatusEnum.CONFIRMED.name
         )
+        order.refresh_from_db()
         old_total_price = order.total_price
 
         product1.price = Decimal("199.99")
@@ -147,7 +150,6 @@ class TestOrderSignal:
             product=product2, discount_percentage=Decimal("50"), is_active=True
         )
         product1.save()
-        order.refresh_from_db()
 
         assert order.total_price == old_total_price
         assert order.items.filter(

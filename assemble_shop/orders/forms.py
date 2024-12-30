@@ -14,6 +14,10 @@ class DiscountForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+
+        if self.errors:
+            raise forms.ValidationError("Please enter the correct data.")
+
         cleaned_data.update({"instance": self.instance})  # type: ignore
         validations = (
             ValidateStartDateBeforeEndDate(),

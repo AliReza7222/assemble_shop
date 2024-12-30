@@ -48,12 +48,18 @@ def update_pending_orders_after_discount_change(sender, instance, **kwargs):
     Updates the discount percentage for pending order items
     when a discount is changed or created, and recalculates total prices.
     """
-    if instance.product.order_items.exists():
+    order_ids = instance.product.orders.filter(
+        status=OrderStatusEnum.PENDING.name
+    ).values_list("id", flat=True)
+
+    if order_ids:
+        discount_active = instance.product.discount_now
         update_orders_pending(
+            order_ids=order_ids,
             product=instance.product,
             data={
-                "discount_percentage": instance.product.discount_now.discount_percentage
-                if instance.product.discount_now
+                "discount_percentage": discount_active.discount_percentage
+                if discount_active
                 else None
             },
         )
@@ -65,9 +71,15 @@ def update_pending_orders_after_discount_deleted(sender, instance, **kwargs):
     Updates the discount percentage for pending order items
     when a discount is deleted.
     """
-    if instance.product.order_items.exists():
+    order_ids = instance.product.orders.filter(
+        status=OrderStatusEnum.PENDING.name
+    ).values_list("id", flat=True)
+
+    if order_ids:
         update_orders_pending(
-            product=instance.product, data={"discount_percentage": None}
+            product=instance.product,
+            data={"discount_percentage": None},
+            order_ids=order_ids,
         )
 
 
@@ -86,11 +98,14 @@ def update_orders_after_product_change(sender, instance, **kwargs):
     Updates the price in pending order items when a product's price changes
     and recalculates total prices of affected orders.
     """
+    order_ids = instance.orders.filter(
+        status=OrderStatusEnum.PENDING.name
+    ).values_list("id", flat=True)
+
     if old_instance := getattr(instance, "_old_instance", None):
-        if (
-            instance.order_items.exists()
-            and old_instance.price != instance.price
-        ):
+        if order_ids and old_instance.price != instance.price:
             update_orders_pending(
-                product=instance, data={"price": instance.price}
+                product=instance,
+                data={"price": instance.price},
+                order_ids=order_ids,
             )

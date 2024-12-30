@@ -1,13 +1,5 @@
-from django.db.models import (
-    Case,
-    DecimalField,
-    F,
-    OuterRef,
-    QuerySet,
-    Subquery,
-    Sum,
-    When,
-)
+from django.db import connection
+from django.db.models import DecimalField, OuterRef, QuerySet, Subquery
 from django.utils import timezone
 
 from assemble_shop.orders.enums import OrderStatusEnum
@@ -28,33 +20,38 @@ def _get_active_discount_subquery():
     ).values("discount_percentage")[:1]
 
 
-def update_order_total_price(order_ids: list[int]) -> None:
-    """
-    Updates the total price for orders given a list of order IDs.
-    """
-    order_subquery = Order.objects.filter(
-        pk=OuterRef("pk"), id__in=order_ids
-    ).annotate(
-        total_price_updated=Sum(
-            F("items__quantity")
-            * Case(
-                When(
-                    items__discount_percentage__isnull=False,
-                    then=F("items__price")
-                    * (1 - F("items__discount_percentage") / 100),
-                ),
-                default=F("items__price"),
-                output_field=DecimalField(max_digits=10, decimal_places=2),
-            )
-        )
+def update_order_total_price(order_ids: list[int]):
+    """Updates total price for orders using raw SQL with CTE."""
+    order_ids_str = ",".join(map(str, order_ids))
+    query = f"""
+    WITH order_totals AS (
+        SELECT
+            orders.id AS order_id,
+            SUM(
+                items.quantity *
+                CASE
+                    WHEN items.discount_percentage IS NOT NULL
+                    THEN items.price * (1 - items.discount_percentage / 100)
+                    ELSE items.price
+                END
+            ) AS total_price_updated
+        FROM orders
+        LEFT JOIN order_items AS items ON orders.id = items.order_id
+        WHERE orders.id IN ({order_ids_str})
+        GROUP BY orders.id
     )
+    UPDATE orders
+    SET total_price = order_totals.total_price_updated
+    FROM order_totals
+    WHERE orders.id = order_totals.order_id;
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(query)
 
-    Order.objects.filter(id__in=order_ids).update(
-        total_price=Subquery(order_subquery.values("total_price_updated")[:1])
-    )
 
-
-def update_orders_pending(product: Product, data: dict) -> None:
+def update_orders_pending(
+    product: Product, data: dict, order_ids: list[int]
+) -> None:
     """
     Updates the pending order items and recalculates total prices for affected orders.
     """
@@ -63,9 +60,7 @@ def update_orders_pending(product: Product, data: dict) -> None:
     ).select_related("order", "product")
 
     order_items.update(**data)
-    update_order_total_price(
-        order_ids=order_items.values_list("order", flat=True)  # type: ignore
-    )
+    update_order_total_price(order_ids=order_ids)
 
 
 def get_order_items(order_id: int) -> QuerySet:

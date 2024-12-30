@@ -111,7 +111,8 @@ class Order(BaseModel):
         indexes = [
             models.Index(
                 fields=["tracking_code"], name="order_tracking_code_idx"
-            )
+            ),
+            models.Index(fields=["status"], name="order_status_idx"),
         ]
 
 
@@ -196,3 +197,9 @@ class Discount(BaseModel):
 
     class Meta:
         db_table = "discounts"
+        indexes = [
+            models.Index(
+                fields=["is_active", "start_date", "end_date"],
+                name="discount_active_idx",
+            )
+        ]

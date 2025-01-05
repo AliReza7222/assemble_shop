@@ -1,29 +1,16 @@
-from django.db import connection
-from django.db.models import DecimalField, OuterRef, QuerySet, Subquery
+from django.db import connection, transaction
+from django.db.models import FilteredRelation, Q
 from django.utils import timezone
 
 from assemble_shop.orders.enums import OrderStatusEnum
-from assemble_shop.orders.models import Discount, Order, OrderItem, Product
+from assemble_shop.orders.models import Order, OrderItem, Product
 from assemble_shop.users.models import User
-
-
-def _get_active_discount_subquery():
-    """
-    Returns a subquery to fetch the active discount percentage for a product.
-    This subquery ensures that only active discounts within the current time range are considered.
-    """
-    return Discount.objects.filter(
-        product=OuterRef("product_id"),
-        is_active=True,
-        start_date__lte=timezone.now(),
-        end_date__gte=timezone.now(),
-    ).values("discount_percentage")[:1]
 
 
 def update_order_total_price(order_ids: list[int]):
     """Updates total price for orders using raw SQL with CTE."""
-    order_ids_str = ",".join(map(str, order_ids))
-    query = f"""
+
+    query = """
     WITH order_totals AS (
         SELECT
             orders.id AS order_id,
@@ -37,7 +24,7 @@ def update_order_total_price(order_ids: list[int]):
             ) AS total_price_updated
         FROM orders
         LEFT JOIN order_items AS items ON orders.id = items.order_id
-        WHERE orders.id IN ({order_ids_str})
+        WHERE orders.id = ANY(%s)
         GROUP BY orders.id
     )
     UPDATE orders
@@ -46,9 +33,10 @@ def update_order_total_price(order_ids: list[int]):
     WHERE orders.id = order_totals.order_id;
     """
     with connection.cursor() as cursor:
-        cursor.execute(query)
+        cursor.execute(query, [list(order_ids)])
 
 
+@transaction.atomic
 def update_orders_pending(
     product: Product, data: dict, order_ids: list[int]
 ) -> None:
@@ -63,34 +51,38 @@ def update_orders_pending(
     update_order_total_price(order_ids=order_ids)
 
 
-def get_order_items(order_id: int) -> QuerySet:
+def order_item_values(order_id: int):
     """
-    Retrieves the order items for a specific order, including the discount now for each product.
+    Retrieves the order items for a specific order using left join with condition.
     """
-    discount_subquery = _get_active_discount_subquery()
-
     return (
-        OrderItem.objects.filter(order__id=order_id)
+        OrderItem.objects.filter(order_id=order_id)
         .select_related("product", "order")
         .annotate(
-            active_discount=Subquery(
-                discount_subquery, output_field=DecimalField()
+            active_discount=FilteredRelation(
+                "product__discounts",
+                condition=(
+                    Q(product__discounts__is_active=True)
+                    & Q(product__discounts__start_date__lte=timezone.now())
+                    & Q(product__discounts__end_date__gte=timezone.now())
+                ),
             )
         )
         .values(
             "product",
-            "quantity",
             "product__price",
-            "active_discount",
+            "quantity",
+            "active_discount__discount_percentage",
         )
     )
 
 
+@transaction.atomic
 def regenerate_order(order_id: int, user: User) -> Order:
     """
     Regenerates an order by creating a new order and copying the items from an existing order.
     """
-    items = get_order_items(order_id)
+    items = order_item_values(order_id)
 
     new_order = Order.objects.create(created_by=user, updated_by=user)
 
@@ -100,7 +92,7 @@ def regenerate_order(order_id: int, user: User) -> Order:
             product_id=item["product"],
             quantity=item["quantity"],
             price=item["product__price"],
-            discount_percentage=item["active_discount"],
+            discount_percentage=item["active_discount__discount_percentage"],
         )
         for item in items
     ]
@@ -109,6 +101,7 @@ def regenerate_order(order_id: int, user: User) -> Order:
     return new_order
 
 
+@transaction.atomic
 def confirmed_order(order: Order) -> tuple:
     """
     Verifies and updates the inventory of the products in an order.

@@ -9,7 +9,11 @@ from assemble_shop.orders.enums import *
 from assemble_shop.orders.forms import DiscountForm
 from assemble_shop.orders.formsets import OrderItemFormset
 from assemble_shop.orders.models import *
-from assemble_shop.orders.utils import get_total_price_order
+from assemble_shop.orders.utils import (
+    confirmed_order,
+    get_extra_context_order,
+    regenerate_order,
+)
 
 
 @admin.register(Product)
@@ -96,35 +100,20 @@ class OrderAdmin(BaseAdmin):
             return queryset.filter(created_by=request.user)
         return queryset
 
-    def changed_status_order(self, order, status):
-        order.status = status
-        order.save(update_fields=["status"])
+    def _changed_status_order(self, request, order_id, status):
+        order = self.get_object(request, order_id)
+        order.status = status  # type: ignore
+        order.save(update_fields=["status"])  # type: ignore
+        self.message_user(
+            request,
+            f"Your order was successfully {status.title()}.",
+            level="success",
+        )
+        return HttpResponseRedirect(request.headers.get("referer"))
 
     @transaction.atomic
     def regenerate_order_view(self, request, order_id):
-        old_order = Order.objects.prefetch_related("items__product").get(
-            id=order_id
-        )
-        new_items_order = []
-        new_order = Order.objects.create(
-            created_by=request.user, updated_by=request.user
-        )
-        for item in old_order.items.all().select_related("product"):
-            new_item_data = {
-                "order": new_order,
-                "product": item.product,
-                "quantity": item.quantity,
-                "price": item.product.price,
-                "discount_percentage": (
-                    item.product.discount_now.discount_percentage
-                    if item.product.discount_now
-                    else None
-                ),
-            }
-            new_items_order.append(OrderItem(**new_item_data))
-        OrderItem.objects.bulk_create(new_items_order)
-        new_order.total_price = get_total_price_order(new_order)
-        new_order.save(update_fields=["total_price"])
+        new_order = regenerate_order(order_id, request.user)
 
         self.message_user(
             request, "Your order was successfully regenerated.", level="success"
@@ -134,35 +123,25 @@ class OrderAdmin(BaseAdmin):
         )
 
     def completed_status_order_view(self, request, order_id):
-        order = self.get_object(request, order_id)
-        self.changed_status_order(order, OrderStatusEnum.COMPLETED.name)
-        self.message_user(
-            request, "Your order was successfully completed.", level="success"
+        return self._changed_status_order(
+            request, order_id, OrderStatusEnum.COMPLETED.name
         )
-        return HttpResponseRedirect(request.headers.get("referer"))
 
     @transaction.atomic
-    def confirimed_order_view(self, request, order_id):
+    def confirmed_order_view(self, request, order_id):
         order = self.get_object(request, order_id)
-        products_updated = []
+        products_updated, error_messages = confirmed_order(order)  # type: ignore
 
-        for item in order.items.select_related("product"):  # type: ignore
-            if item.product.inventory < item.quantity:
-                self.message_user(
-                    request,
-                    f"The stock of a {item.product} product is less than the quantity you selected.",
-                    level="error",
-                )
-                return HttpResponseRedirect(request.headers.get("referer"))
-            item.product.inventory -= item.quantity
-            products_updated.append(item.product)
+        if error_messages:
+            for msg in error_messages:
+                self.message_user(request, msg, level="error")
+            return HttpResponseRedirect(request.headers.get("referer"))
+
         Product.objects.bulk_update(products_updated, ["inventory"])
 
-        self.changed_status_order(order, OrderStatusEnum.CONFIRMED.name)
-        self.message_user(
-            request, "Your order was successfully confirmed.", level="success"
+        return self._changed_status_order(
+            request, order_id, OrderStatusEnum.CONFIRMED.name
         )
-        return HttpResponseRedirect(request.headers.get("referer"))
 
     @transaction.atomic
     def canceled_order_view(self, request, order_id):
@@ -174,11 +153,9 @@ class OrderAdmin(BaseAdmin):
             products_updated.append(item.product)
         Product.objects.bulk_update(products_updated, ["inventory"])
 
-        self.changed_status_order(order, OrderStatusEnum.CANCELED.name)
-        self.message_user(
-            request, "Your order was successfully canceled.", level="success"
+        return self._changed_status_order(
+            request, order_id, OrderStatusEnum.CANCELED.name
         )
-        return HttpResponseRedirect(request.headers.get("referer"))
 
     def get_urls(self):
         urls = super().get_urls()
@@ -186,7 +163,7 @@ class OrderAdmin(BaseAdmin):
         custom_urls = [
             path(
                 "<int:order_id>/confirime_order/",
-                self.admin_site.admin_view(self.confirimed_order_view),
+                self.admin_site.admin_view(self.confirmed_order_view),
                 name="orders_order_confirmed_order",
             ),
             path(
@@ -234,16 +211,7 @@ class OrderAdmin(BaseAdmin):
         super().save_model(request, obj, form, change)
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
-        extra_context = extra_context or {}
-        extra_context["pend_status"] = OrderStatusEnum.PENDING.name
-        extra_context.update(
-            {
-                "canceled_status": OrderStatusEnum.CANCELED.name,
-                "confirmed_status": OrderStatusEnum.CONFIRMED.name,
-                "completed_status": OrderStatusEnum.COMPLETED.name,
-                "is_superior_group": request.user.is_superior_group,
-            }
-        )
+        extra_context = get_extra_context_order(extra_context, request.user)
         return super().change_view(request, object_id, form_url, extra_context)
 
 

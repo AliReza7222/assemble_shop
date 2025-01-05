@@ -3,10 +3,9 @@ from decimal import Decimal
 from django.db.models import Avg
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
-from django.utils import timezone
 
 from .models import *
-from .utils import get_total_price_order, update_total_price_for_orders_pending
+from .utils import update_order_total_price, update_orders_pending
 
 
 @receiver(post_save, sender=Review)
@@ -40,18 +39,7 @@ def update_total_price_after_order_item_change(sender, instance, **kwargs):
     Recalculates the total price of an order when an order item
     is created, updated, or deleted.
     """
-    order = instance.order
-    order.total_price = get_total_price_order(order)
-    order.save(update_fields=["total_price"])
-
-
-@receiver(pre_save, sender=Discount)
-def capture_old_discount_instance(sender, instance, **kwargs):
-    """
-    Captures the old discount associated with the product
-    before saving the Discount instance if exists.
-    """
-    instance._old_discount = instance.product.discount_now
+    update_order_total_price(order_ids=[instance.order.id])
 
 
 @receiver(post_save, sender=Discount)
@@ -60,22 +48,21 @@ def update_pending_orders_after_discount_change(sender, instance, **kwargs):
     Updates the discount percentage for pending order items
     when a discount is changed or created, and recalculates total prices.
     """
-    discount_percentage = (
-        instance._old_discount.discount_percentage
-        if instance._old_discount
-        else None
-    )
+    order_ids = instance.product.orders.filter(
+        status=OrderStatusEnum.PENDING.name
+    ).values_list("id", flat=True)
 
-    if (
-        instance.is_active
-        and instance.start_date <= timezone.now() <= instance.end_date
-    ):
-        discount_percentage = instance.discount_percentage
-
-    update_total_price_for_orders_pending(
-        product=instance.product,
-        data={"discount_percentage": discount_percentage},
-    )
+    if order_ids:
+        discount_active = instance.product.discount_now
+        update_orders_pending(
+            order_ids=order_ids,
+            product=instance.product,
+            data={
+                "discount_percentage": discount_active.discount_percentage
+                if discount_active
+                else None
+            },
+        )
 
 
 @receiver(post_delete, sender=Discount)
@@ -84,9 +71,16 @@ def update_pending_orders_after_discount_deleted(sender, instance, **kwargs):
     Updates the discount percentage for pending order items
     when a discount is deleted.
     """
-    update_total_price_for_orders_pending(
-        product=instance.product, data={"discount_percentage": None}
-    )
+    order_ids = instance.product.orders.filter(
+        status=OrderStatusEnum.PENDING.name
+    ).values_list("id", flat=True)
+
+    if order_ids:
+        update_orders_pending(
+            product=instance.product,
+            data={"discount_percentage": None},
+            order_ids=order_ids,
+        )
 
 
 @receiver(pre_save, sender=Product)
@@ -104,11 +98,14 @@ def update_orders_after_product_change(sender, instance, **kwargs):
     Updates the price in pending order items when a product's price changes
     and recalculates total prices of affected orders.
     """
+    order_ids = instance.orders.filter(
+        status=OrderStatusEnum.PENDING.name
+    ).values_list("id", flat=True)
+
     if old_instance := getattr(instance, "_old_instance", None):
-        if (
-            instance.order_items.exists()
-            and old_instance.price != instance.price
-        ):
-            update_total_price_for_orders_pending(
-                product=instance, data={"price": instance.price}
+        if order_ids and old_instance.price != instance.price:
+            update_orders_pending(
+                product=instance,
+                data={"price": instance.price},
+                order_ids=order_ids,
             )

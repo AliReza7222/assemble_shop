@@ -17,6 +17,9 @@ class Product(BaseModel):
     name = models.CharField(
         verbose_name=_("Product Name"), max_length=225, unique=True
     )
+    image = models.ImageField(
+        upload_to="image_products/", blank=True, null=True
+    )
     price = models.DecimalField(
         verbose_name=_("Price"), max_digits=10, decimal_places=2
     )

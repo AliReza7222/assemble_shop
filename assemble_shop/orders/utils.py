@@ -7,6 +7,15 @@ from assemble_shop.orders.models import Order, OrderItem, Product
 from assemble_shop.users.models import User
 
 
+def get_pending_order_ids_for_product(product: Product):
+    """
+    Retrieve the IDs of all pending orders for the given product.
+    """
+    return product.orders.filter(
+        status=OrderStatusEnum.PENDING.name
+    ).values_list("id", flat=True)
+
+
 def update_order_total_price(order_ids: list[int]):
     """Updates total price for orders using raw SQL with CTE."""
 

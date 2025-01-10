@@ -5,7 +5,11 @@ from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from .models import *
-from .utils import update_order_total_price, update_orders_pending
+from .utils import (
+    get_pending_order_ids_for_product,
+    update_order_total_price,
+    update_orders_pending,
+)
 
 
 @receiver(post_save, sender=Review)
@@ -48,9 +52,7 @@ def update_pending_orders_after_discount_change(sender, instance, **kwargs):
     Updates the discount percentage for pending order items
     when a discount is changed or created, and recalculates total prices.
     """
-    order_ids = instance.product.orders.filter(
-        status=OrderStatusEnum.PENDING.name
-    ).values_list("id", flat=True)
+    order_ids = get_pending_order_ids_for_product(product=instance.product)
 
     if order_ids:
         discount_active = instance.product.discount_now
@@ -71,9 +73,7 @@ def update_pending_orders_after_discount_deleted(sender, instance, **kwargs):
     Updates the discount percentage for pending order items
     when a discount is deleted.
     """
-    order_ids = instance.product.orders.filter(
-        status=OrderStatusEnum.PENDING.name
-    ).values_list("id", flat=True)
+    order_ids = get_pending_order_ids_for_product(product=instance.product)
 
     if order_ids:
         update_orders_pending(
@@ -98,9 +98,7 @@ def update_orders_after_product_change(sender, instance, **kwargs):
     Updates the price in pending order items when a product's price changes
     and recalculates total prices of affected orders.
     """
-    order_ids = instance.orders.filter(
-        status=OrderStatusEnum.PENDING.name
-    ).values_list("id", flat=True)
+    order_ids = get_pending_order_ids_for_product(product=instance)
 
     if old_instance := getattr(instance, "_old_instance", None):
         if order_ids and old_instance.price != instance.price:

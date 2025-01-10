@@ -1,6 +1,5 @@
 # ruff: noqa
 from django.conf import settings
-from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from django.views import defaults as default_views
@@ -24,7 +23,7 @@ urlpatterns = [
     # Your stuff: custom urls includes go here
     # ...
     # Media files
-    *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
+    # *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
 ]
 
 # API URLS

@@ -2,6 +2,7 @@
 # ------------------------------------------------------------------------------
 PRODUCT_FIELDS = (
     "name",
+    "image",
     "price",
     "discounted_price",
     "inventory",

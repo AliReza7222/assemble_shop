@@ -78,6 +78,7 @@ THIRD_PARTY_APPS = [
     "rest_framework",
     "corsheaders",
     "drf_spectacular",
+    "minio_storage",
 ]
 
 LOCAL_APPS = [
@@ -146,6 +147,17 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+# Storages
+# ------------------------------------------------------------------------------
+STORAGES = {
+    "default": {
+        "BACKEND": "minio_storage.storage.MinioMediaStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
 # STATIC
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#static-root
@@ -163,9 +175,29 @@ STATICFILES_FINDERS = [
 # MEDIA
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#media-root
-MEDIA_ROOT = str(APPS_DIR / "media")
-# https://docs.djangoproject.com/en/dev/ref/settings/#media-url
-MEDIA_URL = "/media/"
+# MEDIA_ROOT = str(APPS_DIR / "media")
+# # https://docs.djangoproject.com/en/dev/ref/settings/#media-url
+# MEDIA_URL = "/media/"
+
+# Minio
+# ------------------------------------------------------------------------------
+MINIO_STORAGE_ENDPOINT = env.str("MINIO_STORAGE_ENDPOINT", default="minio:9000")
+MINIO_STORAGE_ACCESS_KEY = env.str(
+    "MINIO_STORAGE_ACCESS_KEY", default="iMKDNSmv2zlsyG3eYem1"
+)
+MINIO_STORAGE_SECRET_KEY = env.str(
+    "MINIO_STORAGE_SECRET_KEY",
+    default="HjDFBkv9PoG2OH7VHbIMSr6JZSYtl8pGcS5ft67K",
+)
+MINIO_STORAGE_USE_HTTPS = env.bool("MINIO_STORAGE_USE_HTTPS", default=False)
+MINIO_STORAGE_MEDIA_BUCKET_NAME = "media"
+MINIO_STORAGE_MEDIA_URL = env.str(
+    "MINIO_STORAGE_MEDIA_URL", "http://127.0.0.1:9000/media/"
+)
+MINIO_STORAGE_MEDIA_BACKUP_BUCKET = "backup"
+MINIO_STORAGE_MEDIA_BACKUP_FORMAT = "%c/"
+MINIO_STORAGE_AUTO_CREATE_MEDIA_BUCKET = True
+
 
 # TEMPLATES
 # ------------------------------------------------------------------------------

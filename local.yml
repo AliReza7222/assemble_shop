@@ -3,6 +3,7 @@ version: '3'
 volumes:
   assemble_shop_local_postgres_data: {}
   assemble_shop_local_postgres_data_backups: {}
+  assemble_shop_local_minio_data: {}
 
 
 services:
@@ -14,6 +15,7 @@ services:
     container_name: assemble_shop_local_django
     depends_on:
       - postgres
+      - minio
     volumes:
       - .:/app:z
     env_file:
@@ -34,3 +36,17 @@ services:
       - assemble_shop_local_postgres_data_backups:/backups
     env_file:
       - ./.envs/.local/.postgres
+
+  minio:
+    image: assemble_shop_local_minio
+    container_name: assemble_shop_local_minio
+    build:
+      context: .
+      dockerfile: ./compose/local/minio/Dockerfile
+    volumes:
+      - assemble_shop_local_minio_data:/data
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    env_file:
+      - ./.envs/.local/.minio

@@ -1,12 +1,15 @@
-from django.contrib import admin
-from django.db import transaction
+from django.contrib import admin, messages
+from django.core.exceptions import ValidationError
+from django.core.files.storage import default_storage
+from django.db import IntegrityError, transaction
 from django.http import HttpResponseRedirect
 from django.urls import path, reverse
+from django.utils.translation import gettext_lazy as _
 
 from assemble_shop.base.admin import BaseAdmin
 from assemble_shop.base.enums import BaseFieldsEnum, BaseTitleEnum
 from assemble_shop.orders.enums import *
-from assemble_shop.orders.forms import DiscountForm
+from assemble_shop.orders.forms import DiscountForm, UploadFileForm
 from assemble_shop.orders.formsets import OrderItemFormset
 from assemble_shop.orders.models import *
 from assemble_shop.orders.utils import (
@@ -14,6 +17,7 @@ from assemble_shop.orders.utils import (
     get_extra_context_order,
     regenerate_order,
 )
+from assemble_shop.utils import excel_file
 
 
 @admin.register(Product)
@@ -46,6 +50,96 @@ class ProductAdmin(BaseAdmin):
                 ),
             )
         return fieldsets
+
+    def save_products(self, products):
+        Product.objects.bulk_create(products)
+
+    def upload_file_to_storage(self, file, user):
+        file_name = f"import_data_product/{user}/{timezone.now().strftime('%Y-%m-%d')}/{file.name}"
+        default_storage.save(file_name, file)
+
+    def process_uploaded_file(self, file, user):
+        headers, rows = excel_file.get_data(file=file)
+        expected_headers = ["name", "price", "description", "inventory"]
+
+        if headers != expected_headers:
+            raise ValidationError(
+                _(
+                    "Headers in the uploaded file are incorrect. "
+                    f"Expected headers are: {', '.join(expected_headers)}. "
+                    "Please ensure the file includes these headers in the exact order."
+                )
+            )
+
+        for row in rows:
+            yield Product(
+                created_by=user,
+                name=row[0],
+                price=row[1],
+                description=row[2] if row[2] else "",
+                inventory=row[3],
+            )
+
+    def import_file_view(self, request):
+        """
+        Handles file upload and data import for products.
+        """
+        if request.method == "POST":
+            form = UploadFileForm(request.POST, request.FILES)
+            if form.is_valid():
+                file = form.cleaned_data.get("file")
+                try:
+                    self.save_products(
+                        products=list(
+                            self.process_uploaded_file(file, request.user)
+                        )
+                    )
+                    self.upload_file_to_storage(file, request.user)
+                    self.message_user(
+                        request,
+                        "File imported successfully!",
+                        level=messages.SUCCESS,
+                    )
+
+                except ValidationError as e:
+                    form.add_error("file", e.message)
+
+                except IntegrityError as e:
+                    form.add_error("file", f"Database error: {str(e)}")
+
+                except Exception:
+                    form.add_error(
+                        "file",
+                        "An error occurred: Please select correct file.",
+                    )
+        else:
+            form = UploadFileForm()
+
+        admin_form = admin.helpers.AdminForm(  # type: ignore
+            form,
+            [("ImportFile", {"fields": ("file",)})],
+            {},
+            model_admin=self,
+        )
+        extra_context = {
+            "adminform": admin_form,
+            "show_save_and_continue": False,
+            "errors": admin.helpers.AdminErrorList(form, []),  # type: ignore
+        }
+        return super().changeform_view(request, extra_context=extra_context)
+
+    def get_urls(self):
+        urls = super().get_urls()
+
+        custom_urls = [
+            path(
+                "upload-file/",
+                self.admin_site.admin_view(self.import_file_view),
+                name="import_file_add_view",
+            )
+        ]
+
+        return custom_urls + urls
 
 
 class OrderItemInline(admin.StackedInline):

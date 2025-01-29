@@ -1,3 +1,5 @@
+import mimetypes
+import os
 from abc import ABC, abstractmethod
 
 from django.core.exceptions import ValidationError
@@ -56,3 +58,26 @@ class ValidateNoOverlappingDiscounts(ValidationStrategy):
             raise ValidationError(
                 _("This product already has an overlapping discount.")
             )
+
+
+class ValidateFileFormatExcel(ValidationStrategy):
+    def validate(self, data):
+        file = data.get("file")
+        content_type = (
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        content_type_file, info = mimetypes.guess_type(file.name)
+        name, file_format = os.path.splitext(file.name)
+
+        if file_format.lower() != ".xlsx" or content_type != content_type_file:
+            raise ValidationError(
+                _("Invalid file format. Please upload an Excel file (.xlsx).")
+            )
+
+
+class ValidateFileSizeExcel(ValidationStrategy):
+    def validate(self, data):
+        file = data.get("file")
+        max_size = 5 * 1024 * 1024
+        if file.size > max_size:
+            raise ValidationError(_("File size should not exceed 5MB."))

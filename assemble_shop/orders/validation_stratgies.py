@@ -62,12 +62,11 @@ class ValidateNoOverlappingDiscounts(ValidationStrategy):
 
 class ValidateFileFormatExcel(ValidationStrategy):
     def validate(self, data):
-        file = data.get("file")
         content_type = (
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-        content_type_file, info = mimetypes.guess_type(file.name)
-        name, file_format = os.path.splitext(file.name)
+        content_type_file, info = mimetypes.guess_type(data.name)
+        name, file_format = os.path.splitext(data.name)
 
         if file_format.lower() != ".xlsx" or content_type != content_type_file:
             raise ValidationError(
@@ -77,7 +76,6 @@ class ValidateFileFormatExcel(ValidationStrategy):
 
 class ValidateFileSizeExcel(ValidationStrategy):
     def validate(self, data):
-        file = data.get("file")
         max_size = 5 * 1024 * 1024
-        if file.size > max_size:
+        if data.size > max_size:
             raise ValidationError(_("File size should not exceed 5MB."))

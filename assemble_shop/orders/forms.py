@@ -49,14 +49,14 @@ class UploadFileForm(forms.Form):
         ),
     )
 
-    def clean(self):
-        data = self.cleaned_data
+    def clean_file(self):
+        file = self.cleaned_data.get("file")
 
         validations = (
             ValidateFileFormatExcel(),
             ValidateFileSizeExcel(),
         )
         for validation in validations:
-            validation.validate(data=data)
+            validation.validate(data=file)
 
-        return data
+        return file

@@ -1,9 +1,13 @@
 from http import HTTPStatus
+from io import BytesIO
 
+import openpyxl
+import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
 from assemble_shop.orders.enums import OrderStatusEnum
-from assemble_shop.orders.models import Order, Review
+from assemble_shop.orders.models import Order, Product, Review
 
 
 class TestReviewAdmin:
@@ -318,3 +322,113 @@ class TestOrderViewsAdmin:
         assert (
             new_items == old_items
         ), "Items in the new order do not match the original order."
+
+
+@pytest.mark.django_db
+class TestProductAdmin:
+    def create_file_excel(self, headers, rows):
+        """
+        Creates an in-memory Excel file with the given headers and rows.
+        """
+        output = BytesIO()
+        wb = openpyxl.Workbook()
+        ws = wb.active
+
+        ws.append(headers)
+
+        for row in rows:
+            ws.append(row)
+
+        wb.save(output)
+        output.seek(0)
+
+        return output
+
+    def test_successful_import_file(self, client, user_admin):
+        """
+        Tests that a valid Excel file successfully imports products into the database.
+        """
+        client.force_login(user_admin)
+
+        headers = ["name", "price", "description", "inventory"]
+        rows = [
+            ["Product A", 10.5, "Description A", 100],
+            ["Product B", 20.0, "Description B", 50],
+        ]
+        excel_file = self.create_file_excel(headers, rows)
+        uploaded_file = SimpleUploadedFile(
+            "products.xlsx",
+            excel_file.read(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        url = reverse("admin:import_file_add_view")
+        client.post(url, {"file": uploaded_file}, follow=True)
+
+        assert Product.objects.count() == 2
+        assert Product.objects.filter(name="Product A").exists()
+        assert Product.objects.filter(name="Product B").exists()
+
+    def test_invalid_headers(self, client, user_admin):
+        """
+        Tests that an Excel file with incorrect headers does not import any products.
+        """
+        client.force_login(user_admin)
+
+        headers = [
+            "wrong_name",
+            "wrong_price",
+            "wrong_description",
+            "wrong_inventory",
+        ]
+        rows = [
+            ["Product A", 10.5, "Description A", 100],
+            ["Product B", 20.0, "Description B", 50],
+        ]
+        excel_file = self.create_file_excel(headers, rows)
+        uploaded_file = SimpleUploadedFile(
+            "products.xlsx",
+            excel_file.read(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        url = reverse("admin:import_file_add_view")
+        client.post(url, {"file": uploaded_file}, follow=True)
+
+        assert Product.objects.count() == 0
+
+    def test_invalid_arrange_headers(self, client, user_admin):
+        """
+        Tests that an Excel file with invalid arrange headers does not import any products.
+        """
+        client.force_login(user_admin)
+
+        headers = ["price", "name", "inventory", "description"]
+        rows = [
+            [10.5, "Product A", 100, "Description A"],
+            [20.0, "Product B", 50, "Description B"],
+        ]
+        excel_file = self.create_file_excel(headers, rows)
+        uploaded_file = SimpleUploadedFile(
+            "products.xlsx",
+            excel_file.read(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        url = reverse("admin:import_file_add_view")
+        client.post(url, {"file": uploaded_file}, follow=True)
+
+        assert Product.objects.count() == 0
+
+    def test_empty_file(self, client, user_admin):
+        """
+        Tests that an empty Excel file does not import any products.
+        """
+        client.force_login(user_admin)
+
+        uploaded_file = SimpleUploadedFile(
+            "products.xlsx",
+            b"",
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        url = reverse("admin:import_file_add_view")
+        client.post(url, {"file": uploaded_file}, follow=True)
+
+        assert Product.objects.count() == 0

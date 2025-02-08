@@ -4,10 +4,11 @@ volumes:
   assemble_shop_local_postgres_data: {}
   assemble_shop_local_postgres_data_backups: {}
   assemble_shop_local_minio_data: {}
+  assemble_shop_local_redis_data: {}
 
 
 services:
-  django:
+  django: &django
     build:
       context: .
       dockerfile: ./compose/local/django/Dockerfile
@@ -50,3 +51,37 @@ services:
       - '9001:9001'
     env_file:
       - ./.envs/.local/.minio
+
+  redis:
+    image: docker.io/redis:6
+    container_name:  assemble_shop_local_redis
+    volumes:
+      - assemble_shop_local_redis_data:/data
+
+  celeryworker:
+    <<: *django
+    image: assemble_shop_local_celeryworker
+    container_name: assemble_shop_local_celeryworker
+    depends_on:
+      - redis
+      - postgres
+    ports: []
+    command: /start-celeryworker
+
+  celerybeat:
+    <<: *django
+    image: assemble_shop_local_celerybeat
+    container_name: assemble_shop_local_celerybeat
+    depends_on:
+      - redis
+      - postgres
+    ports: []
+    command: /start-celerybeat
+
+  flower:
+    <<: *django
+    image: assemble_shop_local_flower
+    container_name: assemble_shop_local_flower
+    ports:
+      - '5555:5555'
+    command: /start-flower

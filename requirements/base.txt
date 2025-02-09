@@ -10,6 +10,8 @@ openpyxl==3.1.5  # https://github.com/theorchard/openpyxl
 defusedxml==0.7.1  # https://github.com/tiran/defusedxml
 boto3==1.35.95  # https://github.com/boto/boto3
 hiredis==3.0.0  # https://github.com/redis/hiredis-py
+uvicorn[standard]==0.32.1  # https://github.com/encode/uvicorn
+uvicorn-worker==0.2.0  # https://github.com/Kludex/uvicorn-worker
 
 # Django
 # ------------------------------------------------------------------------------

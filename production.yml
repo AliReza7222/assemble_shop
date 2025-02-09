@@ -3,11 +3,13 @@ volumes:
   production_postgres_data_backups: {}
   production_traefik: {}
   production_django_media: {}
+  production_redis_data: {}
+  assemble_shop_local_minio_data: {}
 
 
 
 services:
-  django:
+  django: &django
     build:
       context: .
       dockerfile: ./compose/production/django/Dockerfile
@@ -34,6 +36,20 @@ services:
     env_file:
       - ./.envs/.production/.postgres
 
+  minio:
+    image: assemble_shop_production_minio
+    container_name: assemble_shop_production_minio
+    build:
+      context: .
+      dockerfile: ./compose/production/minio/Dockerfile
+    volumes:
+      - assemble_shop_production_minio_data:/data
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    env_file:
+      - ./.envs/.production/.minio
+
   traefik:
     build:
       context: .
@@ -46,10 +62,27 @@ services:
     ports:
       - '0.0.0.0:80:80'
       - '0.0.0.0:443:443'
+      - '0.0.0.0:5555:5555'
 
   redis:
     image: docker.io/redis:6
+    volumes:
+      - production_redis_data:/data
 
+  celeryworker:
+    <<: *django
+    image: assemble_shop_production_celeryworker
+    command: /start-celeryworker
+
+  celerybeat:
+    <<: *django
+    image: assemble_shop_production_celerybeat
+    command: /start-celerybeat
+
+  flower:
+    <<: *django
+    image: assemble_shop_production_flower
+    command: /start-flower
 
   nginx:
     build:

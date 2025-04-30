@@ -58,7 +58,7 @@ def top_customers():
         .values("created_by__email")
         .annotate(total_cost=Sum("total_price"))
         .order_by("-total_cost")
-    )
+    )[:5]
 
 
 def get_extra_context(request, extra_context=None):

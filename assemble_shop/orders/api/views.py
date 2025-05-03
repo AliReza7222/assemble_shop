@@ -14,3 +14,12 @@ class GetTopSelling(GenericAPIView):
         return Response(
             order_service.get_top_selling(), status=status.HTTP_200_OK
         )
+
+
+class GetMonthlyIncome(GenericAPIView):
+    http_method_names = ("get",)
+
+    def get(self, request):
+        return Response(
+            order_service.get_monthly_income(), status=status.HTTP_200_OK
+        )

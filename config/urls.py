@@ -29,17 +29,28 @@ urlpatterns = [
 # API URLS
 urlpatterns += [
     # API base url
-    path("api/", include("config.api_router")),
+    path("api/v1/", include("config.api_router")),
     # DRF auth token
-    path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path(
-        "api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"
+        "api/v1/authentication/token/",
+        TokenObtainPairView.as_view(),
+        name="token_obtain_pair",
     ),
-    path("api/schema/", SpectacularAPIView.as_view(), name="api-schema"),
+    path(
+        "api/v1/authentication/token/refresh/",
+        TokenRefreshView.as_view(),
+        name="token_refresh",
+    ),
+    path("api/v1/schema/", SpectacularAPIView.as_view(), name="api-schema"),
     path(
         "api/docs/",
         SpectacularSwaggerView.as_view(url_name="api-schema"),
         name="api-docs",
+    ),
+    # API Orders
+    path(
+        "api/v1/orders/",
+        include("assemble_shop.orders.urls", namespace="orders"),
     ),
 ]
 

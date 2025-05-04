@@ -35,8 +35,8 @@ class OrderService:
             "top_five_customers": top_five_customers,
         }
 
-    def get_customers_orders(self):
-        pass
+    def get_customers_orders(self, customer_id):
+        return Order.objects.filter(created_by_id=customer_id)
 
     def get_top_rated_products(self):
         pass

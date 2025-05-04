@@ -1,13 +1,22 @@
 from django.urls import path
 
-from assemble_shop.orders.api.views import GetMonthlyIncome, GetTopSelling
+from assemble_shop.orders.api.views import (
+    GetCustomersOrders,
+    GetMonthlyIncome,
+    GetTopSelling,
+)
 
 app_name = "orders"
 urlpatterns = [
-    path("get_top_selling/", GetTopSelling.as_view(), name="get_top_selling"),
+    path("info-top-selling/", GetTopSelling.as_view(), name="info_top_selling"),
     path(
-        "get_monthly_income/",
+        "info-monthly-income/",
         GetMonthlyIncome.as_view(),
-        name="get_monthly_income",
+        name="info_monthly_income",
+    ),
+    path(
+        "info-history-customers-orders/",
+        GetCustomersOrders.as_view(),
+        name="info_history_customers_orders",
     ),
 ]

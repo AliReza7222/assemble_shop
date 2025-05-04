@@ -363,8 +363,20 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "assemble_shop API",
     "DESCRIPTION": "Documentation of API endpoints of assemble_shop",
     "VERSION": "1.0.0",
-    "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAdminUser"],
+    # "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAdminUser"],  # TODO: set custom user permission
     "SCHEMA_PATH_PREFIX": "/api/v1/",
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SECURITY": [{"BearerAuth": []}],
+    "COMPONENTS": {
+        "securitySchemes": {
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+            }
+        }
+    },
 }
+
 # Your stuff...
 # ------------------------------------------------------------------------------

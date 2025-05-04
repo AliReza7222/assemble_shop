@@ -3,6 +3,7 @@ from django.urls import path
 from assemble_shop.orders.api.views import (
     GetCustomersOrders,
     GetMonthlyIncome,
+    GetTopRatedProducts,
     GetTopSelling,
 )
 
@@ -18,5 +19,10 @@ urlpatterns = [
         "info-history-customers-orders/",
         GetCustomersOrders.as_view(),
         name="info_history_customers_orders",
+    ),
+    path(
+        "info-top-rated-products/",
+        GetTopRatedProducts.as_view(),
+        name="info_top_products",
     ),
 ]

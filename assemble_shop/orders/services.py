@@ -3,7 +3,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from assemble_shop.orders.enums import OrderStatusEnum
-from assemble_shop.orders.models import Order, OrderItem
+from assemble_shop.orders.models import Order, OrderItem, Product
 
 
 class OrderService:
@@ -39,7 +39,7 @@ class OrderService:
         return Order.objects.filter(created_by_id=customer_id)
 
     def get_top_rated_products(self):
-        pass
+        return Product.objects.all().order_by("-rating")[:5]
 
     def recent_orders(self):
         pass
